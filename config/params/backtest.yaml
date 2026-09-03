@@ -1,0 +1,234 @@
+# config/params/backtest.yaml
+#
+# Module 15 — Backtest harness (spec Section 19).
+#
+# Every threshold, horizon, significance level and pass criterion used by `ufe/backtest/`
+# lives here. Section 0.1 rule 3: the only numbers allowed in the Python are 0, 1 and array
+# indices, so if you want to change what "passing" means, you change it here and nowhere
+# else. That is deliberate — the gate is the thing that decides whether the product ships,
+# and a hidden literal in a scoring function is exactly how a gate quietly stops meaning
+# anything.
+#
+# Every leaf carries {value, conf, scope} per Section 4.1.
+#
+# Scope note. Every leaf here is `scope: global`. A backtest criterion that could be
+# relaxed city-by-city is not a criterion (Section 4.9's argument applied to the gate
+# itself): if Vizag were allowed a lower Spearman bar than the hold-out cities, the
+# hold-out would be theatre. The loader only enforces `fitted_on`/`citation` provenance on
+# the Section 4 namespaces, so no fitted-parameter provenance block is required here — but
+# note that nothing in this file is *fitted* on anything. These are policy choices and
+# tolerances, tagged accordingly.
+
+_schema_version: 1
+
+freeze:
+  # --- Section 19.1 step 3: parameter provenance -------------------------------------
+  provenance:
+    # Namespaces whose `scope: global` leaves must declare provenance. A leaf with a
+    # `fitted_on.data_through` later than t0 is look-ahead and freeze.py raises. A leaf
+    # with only a `citation` (taken from the literature) carries no data year and is
+    # accepted — the literature predates the fit either way.
+    strict_namespaces:
+      value: [accessibility, archetypes, behaviour, cascade, credibility, price, supply]
+      conf: E
+      scope: global
+    # If true, a `scope: global` leaf in a strict namespace with neither `fitted_on` nor
+    # `citation` is treated as unprovenanced and refused. `ufe.params` already enforces
+    # this at load time; freeze re-checks because a Params object can be constructed by
+    # other means and the freeze is the last line of defence.
+    require_provenance: {value: true, conf: E, scope: global}
+    # A parameter fitted on data through exactly t0 is admissible: the fit saw the origin
+    # year and nothing after it. Only strictly-greater years are look-ahead.
+    allow_data_through_equal_t0: {value: true, conf: E, scope: global}
+
+  # --- Section 19.1 step 1: cell-state vintages ---------------------------------------
+  vintage:
+    # Cell attributes whose source vintage must be declared to `freeze()` and must not
+    # postdate t0 (spec: "use the building vintage, nightlight year, and population
+    # estimate at t0"). A caller that cannot state a vintage for one of these gets a
+    # refusal, not a default — an undeclared vintage is precisely how a 2023 nightlight
+    # composite ends up inside a 2012 freeze.
+    required_keys:
+      value: [builtup_frac, nightlight, population, price_res_inr_sqft]
+      conf: E
+      scope: global
+    # A vintage may lag t0 by at most this many years before the freeze is refused as
+    # unrepresentative of the origin year.
+    max_lag_years: {value: 5, conf: G, scope: global}
+
+  # --- Section 19.1 step 1: price-surface reconstruction ------------------------------
+  price_reconstruction:
+    # "Price surface at t0 is reconstructed where possible; where not, the price test is
+    # skipped for that city and only the settlement test runs." This is the "where
+    # possible" threshold: the fraction of scoring zones that must carry an observed t0
+    # price before the price metrics are considered meaningful.
+    min_observed_zone_frac: {value: 0.30, conf: G, scope: global}
+
+  # --- Section 19.2: the dead-project requirement -------------------------------------
+  dead_projects:
+    # The `project_history` field carrying terminal outcomes, and its vocabulary. Outcomes
+    # are labels, not state: they are read from the FULL history (including post-t0 rows,
+    # which is the point) and are never placed inside the frozen snapshot the model sees.
+    outcome_field: {value: outcome, conf: E, scope: global}
+    abandoned_value: {value: abandoned, conf: E, scope: global}
+    known_values:
+      value: [abandoned, completed, stalled, in_progress]
+      conf: E
+      scope: global
+    # `assert any(p.outcome == 'abandoned' ...)` — Section 19.2 verbatim.
+    min_abandoned_count: {value: 1, conf: E, scope: global}
+    # And a share floor on top of the spec's minimum. A single dead project in a pipeline
+    # of two hundred is technically not survivorship-filtered and is still useless for
+    # testing the credibility layer, so the harness refuses that too. Tagged G: the number
+    # is a judgement, not an estimate.
+    min_abandoned_share: {value: 0.05, conf: G, scope: global}
+
+horizon:
+  # Default out-of-sample horizon in years, t0 -> t0 + default_years.
+  default_years: {value: 10, conf: R, scope: global}
+  # B2's momentum window: "last 5y CAGR persists" (Section 19.3).
+  momentum_lookback_years: {value: 5, conf: E, scope: global}
+  # B4's training window: "cells that converted from non-built to built between t0-10 and
+  # t0" (Section 19.3).
+  conversion_lookback_years: {value: 10, conf: E, scope: global}
+  # Minimum number of history years that must be present before a lookback baseline is
+  # allowed to run. Below this it raises rather than extrapolating from two points.
+  min_history_years: {value: 3, conf: G, scope: global}
+
+baselines:
+  b0:
+    # Floor on the observed city CAGR used as the common anchor, so a city that fell over
+    # the training window does not hand every baseline a negative-power expression.
+    min_cagr: {value: -0.5, conf: G, scope: global}
+    max_cagr: {value: 1.0, conf: G, scope: global}
+  b1:
+    # ln(appreciation) ~ a + b * ln(dist_cbd_m + offset). The offset keeps the CBD cell
+    # itself finite; it is a numerical guard, not a model parameter.
+    distance_offset_m: {value: 100.0, conf: G, scope: global}
+    # The fitted exponent is clipped to a monotonic-decay range: Section 19.3 calls B1
+    # "monotonic decay, fitted exponent", so a positive exponent (appreciation rising with
+    # distance) is outside the baseline's declared form and is clipped away rather than
+    # silently inverting the baseline.
+    exponent_min: {value: -3.0, conf: G, scope: global}
+    exponent_max: {value: 0.0, conf: G, scope: global}
+  b2:
+    # A cell needs a price observation at both ends of the momentum window to have a CAGR.
+    # Cells without one fall back to the city CAGR rather than being dropped, so B2 covers
+    # the same zone set as the model and the Spearman comparison is like-for-like.
+    fallback_to_city_cagr: {value: true, conf: E, scope: global}
+  b3:
+    # "every project completes on stated_completion at full effect, p=1.0, no delay"
+    completion_probability: {value: 1.0, conf: E, scope: global}
+    slip_years: {value: 0, conf: E, scope: global}
+    # Premium applied to a project whose archetype has no `premium` block in
+    # archetypes.yaml. config/params/archetypes.yaml currently carries 3 of the 22
+    # archetypes (a known repo gap), so this is load-bearing today and should stop being
+    # so once the archetype table is complete. Tagged G and deliberately small.
+    default_premium: {value: 0.02, conf: G, scope: global}
+    default_premium_max_m: {value: 3000.0, conf: G, scope: global}
+    # Only the residential premium rows are read: the scored quantity is residential
+    # price appreciation.
+    premium_target: {value: residential, conf: E, scope: global}
+  b4:
+    # --- the in-house logistic cellular-automata urban growth model (Section 19.3) ---
+    # k-ring radius for `neighbourhood_builtup_frac`: "the 6 H3 neighbours and their
+    # neighbours, i.e. k-ring 2".
+    neighbourhood_kring: {value: 2, conf: E, scope: global}
+    # A cell counts as built when builtup_frac crosses this, and as converted when it
+    # crosses it between t0-conversion_lookback_years and t0.
+    built_threshold: {value: 0.5, conf: R, scope: global}
+    # Negatives per positive, sampled from cells that stayed non-built (Section 19.3
+    # step 1: "a random sample of cells that stayed non-built").
+    negative_per_positive: {value: 3.0, conf: G, scope: global}
+    # Refuse to fit below this many converted cells: a logistic regression on a handful of
+    # positives is noise with a coefficient table attached.
+    min_positives: {value: 10, conf: G, scope: global}
+    # sklearn LogisticRegression settings. Seeded and bounded so the fit is deterministic.
+    max_iter: {value: 500, conf: E, scope: global}
+    inverse_regularisation_c: {value: 1.0, conf: G, scope: global}
+    solver: {value: lbfgs, conf: E, scope: global}
+    # Allocation (step 4): annual steps, recomputing the neighbourhood term each step.
+    steps_per_year: {value: 1, conf: E, scope: global}
+    # Exogenous city built-up growth is taken from the observed city trend over the
+    # training window unless the caller supplies it explicitly.
+    exogenous_growth_from_history: {value: true, conf: E, scope: global}
+    # Numerical floor on the per-step allocable area, below which the step is a no-op.
+    min_step_area_sqm: {value: 1.0, conf: G, scope: global}
+    # Zone-class one-hot: the vocabulary comes from ufe.store.schemas.ZONE_CLASSES, so it
+    # is not restated here. Only the encoding policy is a parameter.
+    drop_first_zone_dummy: {value: true, conf: E, scope: global}
+
+  # Baselines are seeded explicitly (Section 0.1 rule 7). One seed, one place.
+  seed: {value: 20240101, conf: E, scope: global}
+
+scoring:
+  # `top3_precision`: "fraction of predicted top-3 res-8 zones in the actual top decile".
+  top_k_zones: {value: 3, conf: E, scope: global}
+  actual_top_quantile: {value: 0.90, conf: E, scope: global}
+  # Below this many scoring zones the metrics are reported but flagged as underpowered;
+  # the gate refuses a scorecard built on fewer.
+  min_zones: {value: 20, conf: G, scope: global}
+
+  bootstrap:
+    # `beat_b2` carries "a bootstrap CI over zones" (Section 19.4) and the gate reads its
+    # lower bound (Section 19.6). Resampling is over zones, seeded, percentile method.
+    n_resamples: {value: 2000, conf: R, scope: global}
+    ci_level: {value: 0.90, conf: E, scope: global}
+    seed: {value: 20240115, conf: E, scope: global}
+
+  bands:
+    # `band_coverage`: "fraction of actuals inside p10-p90". Column names on the `bands`
+    # frame, and the nominal coverage those two columns imply.
+    lower_column: {value: p10, conf: E, scope: global}
+    upper_column: {value: p90, conf: E, scope: global}
+    nominal_coverage: {value: 0.80, conf: E, scope: global}
+    # The reliability diagram is built from every `p<q>` column present on the frame,
+    # paired symmetrically about the median. With only p10/p90 it has one point.
+    column_prefix: {value: p, conf: E, scope: global}
+    # `p10` means the 10th percentile: the digits after the prefix are percent, so they are
+    # divided by this to get a quantile in 0-1. In YAML because Section 0.1 rule 3 leaves no
+    # room for a bare 100 in the Python, and because a deployment that labels its columns
+    # `p0100`-style only has to say so here.
+    percent_scale: {value: 100, conf: E, scope: global}
+
+  mape:
+    # MAPE is undefined at a zero actual; zones with |actual CAGR| below this are excluded
+    # and the exclusion count is reported on the scorecard rather than hidden.
+    min_abs_actual: {value: 0.001, conf: G, scope: global}
+
+  overheat:
+    # "of zones flagged overheated at t0, fraction underperforming city median".
+    comparison_quantile: {value: 0.5, conf: E, scope: global}
+
+  lookahead:
+    # Section 21: "Look-ahead in backtest — symptom: suspiciously high Spearman, >0.8".
+    # This does not fail the gate on its own (a genuinely excellent model would trip it);
+    # it raises the flag on every scorecard and in the gate's reasoning so that nobody
+    # gets to celebrate a 0.93 without first re-reading freeze.py's provenance report.
+    spearman_alarm: {value: 0.80, conf: R, scope: global}
+
+gate:
+  # Section 19.6, transcribed. Change these and you have changed what shipping means.
+  min_median_spearman: {value: 0.55, conf: R, scope: global}
+  min_median_beat_b2: {value: 0.0, conf: E, scope: global}
+  min_beat_b2_ci_lower: {value: 0.0, conf: E, scope: global}
+  min_median_band_coverage: {value: 0.70, conf: E, scope: global}
+  max_median_band_coverage: {value: 0.90, conf: E, scope: global}
+  # Section 23 item 3: "`ufe backtest gate` prints PASS on at least three hold-out cities."
+  min_holdout_cities: {value: 3, conf: E, scope: global}
+  # `beat_b4` on settlement is reported, never gated (Section 19.6). Flipping this to true
+  # is a product decision, not a code change.
+  gate_on_beat_b4: {value: false, conf: E, scope: global}
+
+robustness:
+  # Section 19.5.
+  rolling_origins: {value: [2008, 2012, 2016], conf: E, scope: global}
+  ablatable_layers: {value: [l1, l3, l4, l5], conf: E, scope: global}
+  sobol_n: {value: 1024, conf: E, scope: global}
+  # Leave-one-city-out needs at least this many cities to mean anything.
+  loco_min_cities: {value: 3, conf: G, scope: global}
+
+cli:
+  # Process exit codes. Section 19.6: "Nothing ships on FAIL", so FAIL must be non-zero.
+  exit_code_pass: {value: 0, conf: E, scope: global}
+  exit_code_fail: {value: 1, conf: E, scope: global}
