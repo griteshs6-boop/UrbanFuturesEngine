@@ -1,0 +1,172 @@
+# config/params/credibility.yaml
+# Spec Section 4.4, transcribed. Departures, all documented:
+#   * `scope:` added to every leaf (Section 4.1), assigned from the Section 4.9 table:
+#     "Delay distributions by project type -> global", "Commitment hardness base rates ->
+#     global", "ACS weights and component score tables -> global".
+#   * Leaves printed as bare scalars (`p_cap: 0.97`, `acs_weights.*`, `acs_bounds`,
+#     `stale_after_days`) are encoded in the Section 4.1 common form.
+#   * `delivery_ratio_score` is printed in Section 4.4 as a YAML sequence with a trailing
+#     mapping key (`unknown_announcer`) at the same indentation. That is not valid YAML.
+#     It is encoded here as a mapping with a `bands:` sequence plus the
+#     `unknown_announcer` leaf. Reported as a spec defect.
+#   * The score tables' `score:` key is renamed to `value:` so each row is a Section 4.1
+#     leaf, following the spec's own precedent in `supply.assembly_feasibility`
+#     (`{min_parcel_sqm: 8094, value: 1.00, conf: G}`). Thresholds (`min`, `max`) stay
+#     verbatim as fields of the leaf, exactly as `min_parcel_sqm` is there.
+
+_schema_version: 1
+
+_provenance:
+  # Section 4.9: these are estimated on the national project / announcement panel.
+  fitted_on:
+    cities: [hyderabad, bengaluru, kochi, chennai, ahmedabad]
+    data_through: 2019
+  citation: "National infrastructure project and corporate announcement panel (Section 4.9)"
+
+stage_probability:
+  announced:          {value: 0.27, low: 0.20, high: 0.35, conf: R, scope: global}
+  feasibility:        {value: 0.40, low: 0.35, high: 0.45, conf: R, scope: global}
+  dpr_prepared:       {value: 0.50, low: 0.45, high: 0.55, conf: R, scope: global}
+  dpr_approved:       {value: 0.61, low: 0.55, high: 0.68, conf: R, scope: global}
+  funded:             {value: 0.77, low: 0.72, high: 0.82, conf: R, scope: global}
+  land_majority:      {value: 0.87, low: 0.85, high: 0.90, conf: R, scope: global}
+  construction:       {value: 0.92, low: 0.90, high: 0.95, conf: R, scope: global}
+  half_complete:      {value: 0.97, low: 0.96, high: 0.99, conf: R, scope: global}
+
+commitment_hardness:            # private projects, base anchor
+  verbal:             {value: 0.08, low: 0.05, high: 0.12, conf: R, scope: global}
+  summit_mou:         {value: 0.15, low: 0.10, high: 0.20, conf: R, scope: global}
+  govt_mou_signed:    {value: 0.23, low: 0.18, high: 0.28, conf: R, scope: global}
+  land_allotted:      {value: 0.47, low: 0.40, high: 0.55, conf: R, scope: global}
+  board_approved:     {value: 0.57, low: 0.50, high: 0.65, conf: R, scope: global}
+  land_possessed:     {value: 0.68, low: 0.62, high: 0.75, conf: R, scope: global}
+  ec_granted:         {value: 0.75, low: 0.70, high: 0.80, conf: R, scope: global}
+  epc_appointed:      {value: 0.84, low: 0.80, high: 0.88, conf: R, scope: global}
+  equipment_ordered:  {value: 0.90, low: 0.88, high: 0.93, conf: R, scope: global}
+  construction_seen:  {value: 0.94, low: 0.92, high: 0.97, conf: R, scope: global}
+
+delay_lognormal:                # slip as a FRACTION of announced duration
+  # Spec prints `{median: 0.60, sigma: 0.55, conf: R}`; `median` and `sigma` are encoded as
+  # Section 4.1 leaves so both carry conf and scope.
+  metro_phase1:
+    median: {value: 0.60, conf: R, scope: global, dist: lognormal}
+    sigma:  {value: 0.55, conf: R, scope: global}
+  metro_later:
+    median: {value: 0.45, conf: R, scope: global, dist: lognormal}
+    sigma:  {value: 0.50, conf: R, scope: global}
+  highway:
+    median: {value: 0.35, conf: R, scope: global, dist: lognormal}
+    sigma:  {value: 0.45, conf: R, scope: global}
+  airport_greenfield:
+    median: {value: 0.65, conf: R, scope: global, dist: lognormal}
+    sigma:  {value: 0.60, conf: R, scope: global}
+  private_industrial:
+    median: {value: 0.20, conf: R, scope: global, dist: lognormal}
+    sigma:  {value: 0.40, conf: R, scope: global}
+  data_centre:
+    median: {value: 0.17, conf: R, scope: global, dist: lognormal}
+    sigma:  {value: 0.30, conf: R, scope: global}
+  trunk_utilities:
+    median: {value: 0.75, conf: R, scope: global, dist: lognormal}
+    sigma:  {value: 0.65, conf: R, scope: global}
+  govt_mega:
+    bimodal: true
+    fast_p:     {value: 0.35, conf: R, scope: global}
+    fast_slip:  {value: 0.15, conf: R, scope: global}
+    slow_slip:  {value: 2.0, conf: R, scope: global, dist: lognormal}
+    sigma:      {value: 0.8, conf: R, scope: global}
+
+acs_weights:                    # conf not tagged in spec; ACS weights are global (4.9)
+  delivery_ratio: {value: 0.30, conf: R, scope: global}
+  lag_score:      {value: 0.15, conf: R, scope: global}
+  capacity:       {value: 0.20, conf: R, scope: global}
+  hardness:       {value: 0.20, conf: R, scope: global}
+  cycle:          {value: 0.15, conf: R, scope: global}
+
+acs_bounds:
+  min: {value: 0.55, conf: R, scope: global}
+  max: {value: 1.35, conf: R, scope: global}
+
+delivery_ratio_score:
+  bands:
+    - {min: 0.85, value: 1.00, conf: R, scope: global}
+    - {min: 0.65, value: 0.85, conf: R, scope: global}
+    - {min: 0.45, value: 0.65, conf: R, scope: global}
+    - {min: 0.25, value: 0.45, conf: R, scope: global}
+    - {min: 0.00, value: 0.25, conf: R, scope: global}
+  unknown_announcer: {value: 0.40, conf: R, scope: global}
+
+capacity_score:                 # announced capex / trailing 3y mean annual capex
+  bands:
+    - {max: 0.5, value: 1.00, conf: R, scope: global}
+    - {max: 1.5, value: 0.85, conf: R, scope: global}
+    - {max: 3.0, value: 0.55, conf: R, scope: global}
+    - {max: 6.0, value: 0.30, conf: R, scope: global}
+    - {max: 999, value: 0.15, conf: R, scope: global}
+  # Section 10.2: "if either value is null -> 0.5 and lower data_conf".
+  missing_value: {value: 0.5, conf: G, scope: global}
+
+component_scores:
+  # Section 10.2 constants, in YAML because Section 0.1 rule 3 forbids them in Python.
+  _provenance: {citation: structural_assumption}
+  lag_score_denominator_months: {value: 60, conf: G, scope: global}
+  cycle_score_centre:           {value: 0.5, conf: G, scope: global}
+  cycle_score_spread:           {value: 0.5, conf: G, scope: global}
+
+modifiers:
+  multilateral_funded:
+    p_mult: {value: 1.15, conf: G, scope: global}
+    delay_mult: {value: 1.10, conf: G, scope: global}
+  state_budget_only:
+    p_mult: {value: 0.85, conf: G, scope: global}
+    delay_mult: {value: 1.25, conf: G, scope: global}
+  ppp_concession_signed:
+    p_mult: {value: 1.05, conf: G, scope: global}
+    delay_mult: {value: 1.00, conf: G, scope: global}
+  single_party_sponsored:
+    p_mult: {value: 0.70, conf: G, scope: global}
+    delay_mult: {value: 1.00, conf: G, scope: global}
+  land_over_70pct:
+    p_mult: {value: 1.20, conf: R, scope: global}
+    delay_mult: {value: 0.90, conf: R, scope: global}
+  ec_pending:
+    p_mult: {value: 0.85, conf: G, scope: global}
+    delay_mult: {value: 1.20, conf: G, scope: global}
+  anchor_tenant_committed:
+    p_mult: {value: 1.15, conf: G, scope: global}
+    delay_mult: {value: 0.95, conf: G, scope: global}
+  foreign_no_india_record:
+    p_mult: {value: 0.75, conf: G, scope: global}
+    delay_mult: {value: 1.10, conf: G, scope: global}
+  incentive_contingent_state:
+    p_mult: {value: 0.70, conf: G, scope: global}
+    delay_mult: {value: 1.15, conf: G, scope: global}
+  incentive_contingent_central:
+    p_mult: {value: 0.65, conf: G, scope: global}
+    delay_mult: {value: 1.20, conf: G, scope: global}
+  political_event_announce:
+    p_mult: {value: 0.80, conf: G, scope: global}
+    delay_mult: {value: 1.10, conf: G, scope: global}
+  site_pre_owned:
+    p_mult: {value: 1.15, conf: R, scope: global}
+    delay_mult: {value: 0.90, conf: R, scope: global}
+  dated_phase_plan:
+    p_mult: {value: 1.10, conf: G, scope: global}
+    delay_mult: {value: 0.95, conf: G, scope: global}
+  round_number_no_detail:
+    p_mult: {value: 0.85, conf: G, scope: global}
+    delay_mult: {value: 1.10, conf: G, scope: global}
+  prior_stall_same_state:
+    p_mult: {value: 0.60, conf: R, scope: global}
+    delay_mult: {value: 1.30, conf: R, scope: global}
+
+p_cap: {value: 0.97, conf: R, scope: global}
+discount_rate: {value: 0.12, low: 0.10, high: 0.14, conf: R, scope: global}
+
+physical_divergence:
+  # if claimed stage implies construction but satellite says none
+  penalty_mult: {value: 0.55, low: 0.40, high: 0.70, conf: G, scope: global}
+  stale_after_days: {value: 120, conf: G, scope: global}
+  # Section 10.1 trigger sets, structural (string lists, not parameters).
+  claimed_construction_stages: [construction, half_complete, epc_appointed, equipment_ordered]
+  physical_states_no_activity: [none, cleared]
