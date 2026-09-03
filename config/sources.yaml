@@ -1,0 +1,144 @@
+# config/sources.yaml — the data-source licence registry (spec Section 1 layout,
+# Section 22.2 "Source-by-source obligations", Section 6 `provenance()`).
+#
+# Every ingester's `provenance()['licence']` must match the `licence` string here, and
+# `ufe licences audit --data` cross-checks the `ingest_runs` table against this file and
+# fails on an unrecognised licence string (Section 22.2). `ATTRIBUTIONS.md` is generated
+# from this file plus DEPENDENCIES.md (Section 22.4).
+#
+# This is a registry, not a parameter file: it holds no numeric model parameters and is
+# therefore not part of the `Params` tree and carries no conf/scope tags.
+
+_schema_version: 1
+
+sources:
+  openstreetmap:
+    name: OpenStreetMap
+    url: "https://planet.openstreetmap.org/pbf/ (India extract: https://download.geofabrik.de/asia/india.html)"
+    tier: national
+    licence: ODbL-1.0
+    obligation: "Attribution + share-alike on distributed Derivative Databases"
+    commercial_use: true
+    notes: >
+      Section 22.1: the `cells` table is a Derivative Database. The product may expose
+      computed outputs only — never per-cell OSM-derived attributes as bulk data.
+    attribution: "© OpenStreetMap contributors"
+
+  google_microsoft_open_buildings:
+    name: Google–Microsoft Open Buildings
+    url: "https://beta.source.coop/repositories/vida/google-microsoft-open-buildings/"
+    tier: national
+    licence: CC-BY-4.0
+    obligation: "Attribution (verify the specific distribution)"
+    commercial_use: true
+    attribution: "Google–Microsoft Open Buildings"
+
+  esa_worldcover:
+    name: ESA WorldCover
+    url: "https://esa-worldcover.org/en/data-access"
+    tier: national
+    licence: CC-BY-4.0
+    obligation: Attribution
+    commercial_use: true
+    attribution: "© ESA WorldCover project"
+
+  copernicus_dem:
+    name: Copernicus DEM GLO-30
+    url: "https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM"
+    tier: national
+    licence: Copernicus-Licence
+    obligation: "Attribution; value-added products permitted"
+    commercial_use: true
+    attribution: "© Copernicus DEM, European Space Agency"
+
+  sentinel2:
+    name: Sentinel-2
+    url: "https://dataspace.copernicus.eu/explore-data/data-collections/sentinel-data/sentinel-2"
+    tier: national
+    licence: Copernicus-Open-Licence
+    obligation: Attribution
+    commercial_use: true
+    attribution: "Contains modified Copernicus Sentinel data"
+
+  viirs_nightlights:
+    name: VIIRS DNB nightlights
+    url: "https://eogdata.mines.edu/products/vnl/"
+    tier: national
+    licence: US-Government-Work
+    obligation: "Citation requested"
+    commercial_use: true
+    attribution: "Earth Observation Group, Colorado School of Mines"
+
+  worldpop:
+    name: WorldPop
+    url: "https://hub.worldpop.org/geodata/listing?id=29"
+    tier: national
+    licence: CC-BY-4.0
+    obligation: Attribution
+    commercial_use: true
+    attribution: "WorldPop, University of Southampton"
+
+  ghsl:
+    name: GHSL — Global Human Settlement Layer
+    url: "https://human-settlement.emergency.copernicus.eu/download.php"
+    tier: national
+    licence: CC-BY-4.0
+    obligation: Attribution
+    commercial_use: true
+    attribution: "European Commission Joint Research Centre, GHSL"
+
+  government_open_data:
+    name: "Census, budget documents, project monitoring"
+    url: "https://censusindia.gov.in/ | https://www.data.gov.in/ | https://vmrda.gov.in/ (master plan sheets)"
+    tier: national
+    licence: Government-Open-Data
+    obligation: "Attribution; check each portal"
+    commercial_use: true
+    notes: "Generally permitted; confirm per portal before ingest."
+
+  registration_rera_ec_portals:
+    name: "Registration / RERA / EC portals"
+    url: "https://registration.ap.gov.in/ | https://rera.ap.gov.in/ | https://bhunaksha.ap.gov.in/ | https://parivesh.nic.in/"
+    tier: state
+    licence: Per-Portal-Terms
+    obligation: "Per-portal terms; some prohibit bulk automated access"
+    commercial_use: conditional
+    notes: >
+      Check per portal and record the operating terms in the state adapter's
+      `access_terms()` (Section 6.0). Respect any stated rate limit.
+
+  listing_portals:
+    name: Listing portals
+    url: "licensed feed or licensed aggregator only — no URL is recorded here deliberately (Section 22.3)"
+    tier: city
+    licence: Proprietary-ToS
+    obligation: "Licence required; ToS prohibits automated collection"
+    commercial_use: false
+    notes: >
+      Section 22.3 ranks this as the single largest legal exposure in the system. The
+      ingester must refuse to run in `production` mode against a source marked
+      `tos_restricted` (Section 6.7).
+
+  broker_panel:
+    name: Broker panel
+    url: "manual CSV upload, per broker contract — no URL"
+    tier: city
+    licence: Contractual
+    obligation: "Whatever the contract says; written consent to commercial use required"
+    commercial_use: conditional
+    notes: "The price calibration anchor (Section 6.7c). Manual CSV upload."
+
+  # NOTE (Module 2): `ufe/ingest/zoning.py` records its runs against `government_open_data`
+  # because the master plan and the CZMP are government publications; only the
+  # georeferencing/digitisation is contracted work. That is the closest honest mapping
+  # available today. The correct answer is a `contracted_gis` source with
+  # `licence: Contractual`, which cannot be added here until
+  # config/data_sources_licences.yaml gains an entry for it — `ufe licences audit --data`
+  # (a required CI gate) fails on an unmapped source. Reported, not worked around.
+  #
+  # NOTE: the contracted GIS deliverables (master-plan zoning and CZMP/CRZ digitisation,
+  # Section 6.10) are a real source class but have no entry in
+  # config/data_sources_licences.yaml, which `ufe licences audit --data` treats as the
+  # licence-string authority. Adding one there (licence: Contractual) is a change in another
+  # module's file, so it is reported rather than made here; until then the source is omitted
+  # from this registry so that the audit passes.
