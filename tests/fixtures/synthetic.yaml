@@ -1,0 +1,146 @@
+# Generation constants for the shared synthetic city (tests/fixtures/synthetic.py).
+#
+# Every number the synthetic generator uses lives here, so the generator module itself
+# contains no numeric literals beyond 0 and 1 (spec Section 0.1 rule 3).  These are fixture
+# values, not model parameters — they never enter config/params/.
+
+grid:
+  # A small box on the Vizag coast.  h3 res-9 over this yields a few hundred cells.
+  center_lat: 17.7200
+  center_lon: 83.2200
+  half_span_lat_deg: 0.030
+  half_span_lon_deg: 0.030
+  resolution: 9
+  parent_resolution: 8
+  default_n: 300
+  default_seed: 20240101
+  # Cells nearer than this to the box centre are flagged in_city.
+  in_city_radius_deg: 0.026
+
+cells:
+  area_sqm: {min: 100000.0, max: 110000.0}
+  elev_m: {min: 0.0, max: 240.0}
+  slope_pct: {min: 0.0, max: 24.0}
+  builtup_frac: {min: 0.0, max: 0.95}
+  undevelopable_frac: {min: 0.0, max: 0.60}
+  permitted_far: {min: 1.0, max: 3.5}
+  population_per_builtup: {min: 400.0, max: 2600.0}
+  persons_per_household: 4.2
+  floorspace_res_per_person_sqm: {min: 9.0, max: 26.0}
+  floorspace_com_share: {min: 0.05, max: 0.45}
+  price_res_inr_sqft: {min: 1800.0, max: 9500.0}
+  price_land_share: {min: 0.25, max: 0.70}
+  rent_yield_annual: {min: 0.018, max: 0.042}
+  months_per_year: 12
+  mean_parcel_sqm: {min: 90.0, max: 2400.0}
+  parcel_count: {min: 4, max: 900}
+  util_water_p: 0.72
+  util_sewer_p: 0.45
+  util_power_p: 0.88
+  dist_cbd_m: {min: 200.0, max: 42000.0}
+  dist_coast_m: {min: 50.0, max: 30000.0}
+  dist_arterial_m: {min: 10.0, max: 6500.0}
+  nightlight: {min: 0.05, max: 62.0}
+  data_conf: {min: 0.30, max: 0.98}
+  # Fraction of cells with a missing price / rent observation, so nullability is exercised.
+  price_missing_p: 0.08
+  rent_missing_p: 0.14
+  jobs_total: {min: 0.0, max: 5200.0}
+  # Dirichlet concentration over the 8 sectors of Section 3.6.
+  sector_alpha: [1.4, 0.5, 0.9, 0.8, 1.1, 2.0, 1.3, 0.7]
+  # Dirichlet concentration over the 4 income bands of Section 3.7.
+  band_alpha: [2.6, 3.1, 1.5, 0.7]
+  landcover_classes: [builtup, cropland, tree_cover, grassland, shrubland, bare, water]
+  landcover_weights: [0.34, 0.22, 0.14, 0.11, 0.08, 0.06, 0.05]
+  zone_classes: [res, com, ind, agri, public, eco, mixed]
+  zone_weights: [0.38, 0.12, 0.10, 0.18, 0.08, 0.06, 0.08]
+  crz_classes: [none, I, II, III, IV]
+  crz_weights: [0.70, 0.05, 0.10, 0.12, 0.03]
+  # Derived / downstream columns, filled with plausible values so the fixture exercises the
+  # full schema.  Layers overwrite these with real computations.
+  slope_cost_mult: {min: 1.0, max: 1.9}
+  capacity_utilisation: {min: 0.15, max: 0.99}
+  eps_supply: {min: 0.10, max: 3.0}
+  regulatory_index: {min: 0.0, max: 1.0}
+  lnA: {min: 5.0, max: 14.0}
+  lnA_spread: 0.6
+  jobs_30min: {min: 1000.0, max: 400000.0}
+  jobs_45min_mult: 1.6
+  jobs_60min_mult: 2.3
+  station_weight: {min: 0.0, max: 1.0}
+  retail_poi_count: {min: 0, max: 60}
+  education_poi_count: {min: 0, max: 14}
+  health_poi_count: {min: 0, max: 9}
+  seats_per_education_poi: 400.0
+  beds_per_health_poi: 30.0
+  amenity: {min: -0.4, max: 0.9}
+  disamenity: {min: 0.0, max: 0.7}
+  alpha_res: {min: -1.2, max: 1.2}
+  inventory_months: {min: 2.0, max: 40.0}
+  hist_absorption_sqm: {min: 0.0, max: 55000.0}
+  dist_existing_builtup_m: {min: 0.0, max: 8000.0}
+
+history:
+  # cells_history spans base_year - span_years .. base_year inclusive.
+  base_year: 2024
+  span_years: 10
+  builtup_cagr: {min: -0.005, max: 0.060}
+  price_cagr: {min: -0.020, max: 0.130}
+  population_cagr: {min: -0.010, max: 0.050}
+  nightlight_cagr: {min: -0.020, max: 0.090}
+  # Fraction of (cell, year) rows where the price observation is missing.
+  price_missing_p: 0.35
+
+projects:
+  default_n: 12
+  default_seed: 20240102
+  archetypes: [metro_phase1, highway, data_centre, industrial_park, port_expansion,
+               it_campus, township, university, airport_greenfield, trunk_utilities]
+  geom_types: [point, polygon, linestring]
+  geom_type_weights: [0.6, 0.3, 0.1]
+  polygon_half_side_deg: 0.004
+  linestring_span_deg: 0.010
+  scale_units: [mw, seats, beds, acres, units_per_year, mppa, km, lakh_sqft]
+  scale_value: {min: 5.0, max: 4000.0}
+  capex_inr_cr: {min: 40.0, max: 24000.0}
+  capex_missing_p: 0.15
+  stated_jobs: {min: 50.0, max: 22000.0}
+  jobs_missing_p: 0.20
+  median_wage_inr_mo: {min: 12000.0, max: 90000.0}
+  wage_missing_p: 0.25
+  announced_year: {min: 2012, max: 2024}
+  announced_month: {min: 1, max: 12}
+  announced_day: {min: 1, max: 28}
+  duration_years: {min: 2, max: 11}
+  stage_asof_lag_days: {min: 0, max: 900}
+  physical_asof_lag_days: {min: 0, max: 400}
+  physical_missing_p: 0.30
+  land_possession_pct: {min: 0.0, max: 1.0}
+  land_possession_missing_p: 0.35
+  public_p: 0.45
+  verified_p: 0.7
+  n_modifiers: {min: 0, max: 3}
+  modifier_keys: [land_acquisition_disputed, court_stay, anchor_tenant_signed,
+                  environmental_clearance_pending, state_election_year]
+  n_source_urls: {min: 1, max: 3}
+  ai_prompt_version: "1.4.0"
+  human_extracted_p: 0.5
+  first_seen_lag_days: {min: 0, max: 60}
+  last_updated_lag_days: {min: 0, max: 30}
+
+announcers:
+  default_n: 5
+  default_seed: 20240103
+  announced_capex_10y_inr_cr: {min: 500.0, max: 60000.0}
+  delivery_ratio: {min: 0.05, max: 0.95}
+  median_slip_months: {min: 0.0, max: 72.0}
+  mean_annual_capex_3y_inr_cr: {min: 50.0, max: 9000.0}
+  net_debt_ebitda: {min: -1.5, max: 7.0}
+  net_debt_missing_p: 0.30
+  listed_p: 0.6
+  parent_p: 0.3
+  n_aliases: {min: 0, max: 2}
+  n_record_sources: {min: 1, max: 3}
+  record_asof_year: 2025
+  record_asof_month: 3
+  record_asof_day: 31
