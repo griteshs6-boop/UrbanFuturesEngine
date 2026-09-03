@@ -1,0 +1,71 @@
+# config/params/satellite.yaml
+#
+# Module 14 — Satellite Monitor (spec Section 18).
+#
+# All thresholds here are tagged conf: G per the spec note in 18.1: "they need calibration
+# against a labelled set of 30-50 known-outcome sites before being trusted." Do not treat
+# these as production-ready without that calibration pass.
+#
+# Every leaf is {value, conf, scope} per Section 4.1. Nothing numeric lives in the Python.
+
+_schema_version: 1
+
+stac:
+  endpoint:
+    value: "https://earth-search.aws.element84.com/v1"
+    conf: E
+    scope: global
+    # A public STAC endpoint serving Sentinel-2 L2A (Element84 Earth Search). Configurable so
+    # deployments can point at a different catalogue without touching code.
+  collection: {value: "sentinel-2-l2a", conf: E, scope: global}
+  assets: {value: [B02, B03, B04, B08, B11, SCL], conf: E, scope: global}
+  resolution_m: {value: 10, conf: E, scope: global}
+
+query:
+  aoi_buffer_m: {value: 500, conf: G, scope: global}
+  lookback_months_before_announcement: {value: 12, conf: G, scope: global}
+  max_scene_cloud_cover_pct: {value: 60, conf: G, scope: global}
+  # scene-level eo:cloud_cover filter passed to the STAC search itself (Section 18.1 step 1).
+  max_month_cloud_frac: {value: 0.40, conf: G, scope: global}
+  # fraction of AOI pixels cloud-flagged (mean across the month's scenes) above which the
+  # monthly composite is dropped entirely rather than treated as a real observation.
+  min_baseline_months: {value: 3, conf: G, scope: global}
+  # minimum number of valid pre-announcement composite months required before a baseline can
+  # be computed; below this, classification is refused rather than guessed.
+  min_valid_pixel_frac: {value: 0.50, conf: G, scope: global}
+  # minimum fraction of AOI pixels that must have at least one cloud-free observation in a
+  # month for that month's composite to be considered valid, independent of max_month_cloud_frac.
+
+scl:
+  # Sentinel-2 Scene Classification Layer codes.
+  valid_codes: {value: [4, 5, 6, 7, 11], conf: E, scope: global}
+  # 4 vegetation, 5 bare soil, 6 water, 7 unclassified, 11 snow/ice.
+  cloud_codes: {value: [3, 8, 9, 10], conf: E, scope: global}
+  # 3 cloud shadow, 8 cloud medium probability, 9 cloud high probability, 10 thin cirrus.
+
+thresholds:
+  # Section 18.1 step 5. Evaluated in this priority order (most-advanced state first) so a
+  # pixel/AOI satisfying more than one condition is assigned its most-advanced matching state.
+  # See monitor.py::classify_state for the precedence rationale.
+  none:
+    abs_dndvi_max: {value: 0.05, conf: G, scope: global}
+    dndbi_max: {value: 0.03, conf: G, scope: global}
+  cleared:
+    dndvi_max: {value: -0.15, conf: G, scope: global}
+    dndbi_max: {value: 0.05, conf: G, scope: global}
+  earthworks:
+    dndvi_max: {value: -0.15, conf: G, scope: global}
+    dbsi_min: {value: 0.08, conf: G, scope: global}
+    dndbi_max: {value: 0.10, conf: G, scope: global}
+  structure:
+    dndbi_min: {value: 0.10, conf: G, scope: global}
+  operational:
+    nightlight_pct_rise_min: {value: 0.30, conf: G, scope: global}
+
+priority_tier:
+  # Section 18.3. Spec gives a range ("top 50-100"), not a fixed count; treated as a
+  # Monte-Carlo-style range parameter with a central deterministic value. Flagged as an
+  # ambiguity in the build report.
+  n_projects: {value: 75, low: 50, high: 100, conf: G, scope: global, dist: uniform}
+  imagery_resolution_m: {value: 3, conf: E, scope: global}
+  cadence_days: {value: 1, conf: E, scope: global}
