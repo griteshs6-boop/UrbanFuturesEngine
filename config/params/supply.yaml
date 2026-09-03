@@ -1,0 +1,77 @@
+# config/params/supply.yaml
+# Spec Section 4.5, transcribed. `scope:` added per the Section 4.9 table:
+# "Supply elasticity class values -> local", "Absorption base rates -> local",
+# "Utility gate fractions -> local". Structural / technological relationships that are not
+# local (parcel-assembly feasibility, slope penalties, unit conversions) are global.
+# Leaves printed as bare scalars are encoded in the Section 4.1 common form.
+
+_schema_version: 1
+
+elasticity_class:
+  # scope: local — "Local regulation and topography" (Section 4.9).
+  dense_core:        {value: 0.12, low: 0.05, high: 0.20, conf: R, scope: local}
+  constrained_periph: {value: 0.50, low: 0.30, high: 0.70, conf: R, scope: local}
+  typical_periph:    {value: 1.50, low: 1.00, high: 2.00, conf: R, scope: local}
+  open_fringe:       {value: 2.75, low: 2.00, high: 3.50, conf: R, scope: local}
+
+# Section 7.4: the class assigned where the classifier is ambiguous. Supplied by the city
+# config or, failing that, by the city_class default (Section 20.2).
+elasticity_class_default:
+  {value: null, requires_local: true, kind: category, conf: G, scope: local}
+
+elasticity_regression:          # preferred when calibration data exists
+  enabled: false
+  coefficients: {a0: null, a1: null, a2: null, a3: null, a4: null}
+  fit:
+    # Section 7.4 fitting rules. Kept here so l0_substrate.py holds no numeric literals.
+    _provenance: {citation: structural_assumption}
+    min_abs_dln_price:   {value: 0.05, conf: G, scope: global}   # drop unstable zones
+    log_offset:          {value: 0.01, conf: G, scope: global}   # ln(1 - frac + 0.01)
+
+assembly_feasibility:
+  # Structural land-assembly relationship, common across cities -> scope: global.
+  - {_provenance: &assembly_cite {citation: structural_assumption},
+     min_parcel_sqm: 8094, value: 1.00, conf: G, scope: global}     # 2 acres
+  - {_provenance: *assembly_cite,
+     min_parcel_sqm: 2023, value: 0.80, conf: G, scope: global}     # 0.5 acre
+  - {_provenance: *assembly_cite,
+     min_parcel_sqm: 809,  value: 0.55, conf: G, scope: global}     # 0.2 acre
+  - {_provenance: *assembly_cite,
+     min_parcel_sqm: 0,    value: 0.30, conf: G, scope: global}
+
+utility_gate:
+  # scope: local — "Local service standards" (Section 4.9).
+  none:              {value: 0.15, conf: G, scope: local}
+  water:             {value: 0.40, conf: G, scope: local}
+  water_sewer:       {value: 0.80, conf: G, scope: local}
+  water_sewer_power: {value: 1.00, conf: G, scope: local}
+
+slope:
+  _provenance: {citation: "Hillside development cost literature; 15% grade construction cutoff"}
+  cutoff_pct: {value: 15, conf: E, scope: global}
+  penalty_start_pct: {value: 5, conf: E, scope: global}   # conf not tagged in spec
+  penalty_per_pct: {value: 0.04, conf: G, scope: global}
+
+absorption:
+  # scope: local — "Absorption base rates -> local" (Section 4.9).
+  base_growth: {value: 0.05, low: 0.0, high: 0.10, conf: G, scope: local}
+  inventory_months_soft_cap: {value: 18, conf: R, scope: local}
+  inventory_damping_exponent: {value: 1.5, conf: G, scope: local}
+
+hard_gates: [water, defence, forest, crz_1, port, airport_operational_area]
+
+# ---------------------------------------------------------------------------------------
+# Section 7.4 / Section 11 quantities described in prose. Encoded in the Section 4.1 form.
+# ---------------------------------------------------------------------------------------
+
+elasticity_classifier:
+  _provenance: {citation: structural_assumption}
+  dense_core_builtup_frac_min:      {value: 0.55, conf: G, scope: global}
+  dense_core_headroom_ratio_max:    {value: 0.5,  conf: G, scope: global}
+  constrained_undevelopable_min:    {value: 0.35, conf: G, scope: global}
+  open_fringe_builtup_frac_max:     {value: 0.10, conf: G, scope: global}
+
+units:
+  # Definitional conversion (Section 11 ACCEPTANCE: 40 acres * 4046.86 * permitted_far).
+  _provenance: {citation: "International yard and pound agreement (1959): 1 acre = 4046.8564224 m2"}
+  sqm_per_acre: {value: 4046.86, conf: E, scope: global}
