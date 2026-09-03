@@ -1,0 +1,42 @@
+# config/cities/vizag.yaml — spec Section 4.8, transcribed verbatim.
+#
+# `overrides` may name `scope: local` parameters only. A `scope: global` path here raises
+# ufe.errors.ParameterScopeViolation (spec Section 4.9 calls it GlobalParameterOverride;
+# ufe.params exposes that name as an alias). The escape hatch is
+# `_global_overrides_justification`, which requires all four of value / reason /
+# approved_by / date and is logged into every simulation manifest.
+
+city_id: vizag
+name: Visakhapatnam
+state_code: AP                  # selects the state ingest adapter, Section 6.0
+city_class: tier2_coastal_south # source of defaults where local data is absent
+# This is the GVMC (Greater Visakhapatnam Municipal Corporation) boundary, ~625 km2,
+# pulled from OpenStreetMap -- NOT the VMRDA (regional development authority) boundary.
+# An earlier revision pointed at data/raw/boundaries/vizag_vmrda.geojson, which has never
+# existed on disk. Consequence: the spec's Section 5.2 sizing sanity check of 150k-300k
+# res-9 cells assumed the much larger VMRDA area; over GVMC plus the 50 km halo the grid
+# comes out at ~136.5k cells, of which ~5.5k are `in_city`.
+boundary_source: data/raw/boundaries/vizag_osm.geojson
+crs_metric: EPSG:32644          # UTM 44N
+base_year: 2024
+horizon_years: [2027, 2030, 2035, 2040]
+cbd_point: {lat: 17.7100, lon: 83.3000}
+coastal: true
+calibration_level: full         # full | class_default — surfaced in every output
+
+overrides:                      # scope:local parameters only
+  supply.elasticity_class.dense_core.value: 0.10
+  price.macro.scenarios.base.value: 0.061
+
+_global_overrides_justification: {}   # see 4.9 — normally empty
+
+osrm_endpoints:
+  car: http://localhost:5000
+  twowheeler: http://localhost:5001
+  foot: http://localhost:5002
+
+factors:                        # named factor groups for the decomposition, Section 13.4
+  metro:        [vizag_metro_c1, vizag_metro_c2, vizag_metro_c3]
+  airport:      [bhogapuram_airport, airport_access_road]
+  data_centres: [dc_tarluvada, dc_cluster_north]
+  port_indl:    [port_expansion, indl_park_atchutapuram]
