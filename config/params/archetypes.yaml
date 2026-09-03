@@ -1,0 +1,121 @@
+# config/params/archetypes.yaml
+# Spec Section 4.3, transcribed verbatim, with `scope: global` added to every leaf per the
+# Section 4.9 scope table ("All archetype magnitudes, radii, lags, ramps -> global";
+# "Cascade ratios and radii -> global"), and `_provenance` blocks supplying the
+# fitted_on / citation record the Section 4 ACCEPTANCE block requires of global leaves.
+#
+# TRANSCRIPTION GAP, reported rather than invented:
+# Section 4.3 says "The full file must contain all 22 archetypes listed in Section 10.2" and
+# that the values "come from the parameter tables in `Urban_Futures_Engine_Specification.docx`
+# Sections 11 and 12". Section 10.2 of the supplied spec is "Component scores" and lists no
+# archetypes, and the .docx is not part of the supplied material. Only the three archetypes
+# printed in full in Section 4.3 are transcribed here. Archetype keys referenced elsewhere in
+# the spec but carrying no values anywhere in it — `it_park` (4.3 conditional_upgrade),
+# `logistics_park` and `manufacturing_light` (4.3 cascade targets), `gcc` (Module 5
+# ACCEPTANCE), automotive OEM tier-1/tier-2 (Section 14.3), township, university,
+# airport_greenfield, highway, port_expansion, trunk_utilities — are deliberately absent.
+# Fabricating magnitudes for them would violate Section 0.1 rule 9.
+
+_schema_version: 1
+
+_validation:
+  # Section 4 ACCEPTANCE: "phase_curve fractions sum to 1.0 +/- 1e-6". The tolerance is a
+  # parameter because Section 0.1 rule 3 forbids numeric literals in Python.
+  phase_curve_sum_tolerance: 1.0e-6
+
+_defaults:
+  # Section 10.4: "Archetypes with no phase_curve ... use a default ... this default lives in
+  # YAML, not code." Same section: construction_start is derived as
+  # `open_year - construction_years[archetype]`, "defaulting to 3".
+  _provenance: {citation: structural_assumption}
+  phase_curve:
+    announcement:       {value: 0.20, conf: G, scope: global}
+    construction_start: {value: 0.20, conf: G, scope: global}
+    operational:        {value: 0.60, conf: G, scope: global}
+  construction_years:   {value: 3, conf: G, scope: global}
+  operational_ramp_years: {value: 3, conf: G, scope: global}
+
+metro_rail:
+  _provenance:
+    citation: "Rail transit capitalisation meta-analyses (Debrezion et al. 2007; Cervero & Kang 2011); Indian metro phase panel"
+    fitted_on: {cities: [hyderabad, bengaluru, kochi], data_through: 2019}
+  scale_unit: km
+  network_effect:
+    type: transit_line          # transit_line | road_link | road_upgrade | none
+  employment: null              # no direct permanent employment
+  premium:                      # residual address effect beyond accessibility
+    - {target: residential, max_m: 500,  value: 0.09, low: 0.05, high: 0.15, conf: E, scope: global}
+    - {target: residential, max_m: 1000, value: 0.055, low: 0.03, high: 0.08, conf: E, scope: global}
+    - {target: commercial,  max_m: 400,  value: 0.17, low: 0.10, high: 0.25, conf: E, scope: global}
+    - {target: office,      max_m: 500,  value: 0.10, low: 0.06, high: 0.14, conf: R, scope: global}
+  premium_multipliers:
+    interchange_station: {value: 1.75, low: 1.5, high: 2.0, conf: R, scope: global}
+  disamenity:
+    - {target: residential, max_m: 100, value: -0.035, low: -0.05, high: -0.02,
+       conf: R, scope: global, applies_when: elevated}
+  construction_penalty:
+    {target: all, max_m: 200, value: -0.04, low: -0.06, high: -0.02, conf: R, scope: global}
+  phase_curve:                  # fractions must sum to 1.0
+    announcement:      {value: 0.35, low: 0.30, high: 0.40, conf: R, scope: global}
+    construction_start: {value: 0.175, low: 0.15, high: 0.20, conf: R, scope: global}
+    operational:       {value: 0.475, low: 0.45, high: 0.55, conf: R, scope: global}
+  operational_ramp_years: {value: 3, low: 2, high: 4, conf: E, scope: global}
+  cascade: null
+
+data_centre:
+  _provenance:
+    citation: "Data-centre employment and land-take ratios, operator disclosures and EC filings"
+    fitted_on: {cities: [hyderabad, bengaluru, chennai, mumbai], data_through: 2019}
+  scale_unit: mw
+  network_effect: {type: none}
+  employment:
+    permanent_per_unit:   {value: 0.42, low: 0.25, high: 0.60, conf: R, scope: global}   # jobs per MW
+    sector: it_office
+    median_wage_inr_mo:   {value: 70000, low: 50000, high: 95000, conf: R, scope: global}
+    multiplier:           {value: 1.5, low: 1.2, high: 1.8, conf: G, scope: global}
+    residential_capture_radius_m: {value: 12000, conf: G, scope: global}
+    construction_peak_per_unit: {value: 22.5, low: 15, high: 30, conf: R, scope: global}  # workers per MW
+    construction_years:   {value: 3, low: 2, high: 4, conf: R, scope: global}
+    construction_local_retention: {value: 0.10, low: 0.05, high: 0.15, conf: G, scope: global}
+  land_take_sqm_per_unit: {value: 1113, low: 607, high: 1619, conf: R, scope: global}   # per MW, from acres
+  premium:
+    - {target: residential, max_m: 5000, value: 0.02, low: 0.00, high: 0.04, conf: G, scope: global}
+  sterilises_land: true
+  conditional_upgrade:
+    unlocks: it_park
+    requires_all: [substation_added, tier1_fibre, talent_pool_45min]
+    probability: {value: 0.30, low: 0.10, high: 0.50, conf: G, scope: global}
+    lag_years:   {value: 5, low: 3, high: 7, conf: G, scope: global}
+  cascade:
+    ratio:    {value: 0.10, low: 0.05, high: 0.15, conf: G, scope: global}
+    radius_m: {value: 20000, conf: G, scope: global}
+    # Spec prints `lag_years: [2, 6]`; encoded in the Section 4.1 range form, deterministic
+    # value = midpoint (Section 14.1: "sampled in MC, midpoint deterministic").
+    lag_years: {value: 4, low: 2, high: 6, conf: G, dist: uniform, scope: global}
+    target_archetype: logistics_park
+
+electronics_assembly:
+  _provenance:
+    citation: "Electronics assembly wage, dormitory and churn rates from plant-level disclosures"
+    fitted_on: {cities: [chennai, bengaluru, noida], data_through: 2019}
+  scale_unit: jobs
+  network_effect: {type: none}
+  employment:
+    permanent_per_unit: {value: 1.0, conf: E, scope: global}
+    sector: manuf_light
+    median_wage_inr_mo: {value: 16000, low: 12000, high: 20000, conf: R, scope: global}
+    multiplier: {value: 0.95, low: 0.7, high: 1.2, conf: R, scope: global}
+    residential_capture_radius_m: {value: 8000, conf: R, scope: global}
+    dormitory_share: {value: 0.68, low: 0.55, high: 0.80, conf: R, scope: global}
+    annual_churn: {value: 0.60, low: 0.40, high: 0.80, conf: R, scope: global}
+  housing_typology:
+    ownership_demand_share: {value: 0.02, low: 0.00, high: 0.05, conf: R, scope: global}
+    dormitory_sqm_per_worker: {value: 7.5, low: 6, high: 9, conf: R, scope: global}
+    dormitory_radius_m: {value: 5000, conf: R, scope: global}
+  disamenity:
+    - {target: residential, max_m: 1000, value: -0.05, low: -0.09, high: -0.02, conf: R, scope: global}
+  cascade:
+    ratio:    {value: 0.5, low: 0.3, high: 0.7, conf: G, scope: global}
+    radius_m: {value: 25000, conf: G, scope: global}
+    lag_years: {value: 1.5, low: 1, high: 2, conf: G, dist: uniform, scope: global}
+    target_archetype: manufacturing_light
