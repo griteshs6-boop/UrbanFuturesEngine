@@ -1,0 +1,138 @@
+# config/params/behaviour.yaml
+# Spec Section 4.6, transcribed. `scope:` added per the Section 4.9 table: "Logit b_*
+# coefficients -> local", "Income band boundaries -> local", "Natural growth rate -> local".
+# Quantities estimated on the national panel (sector in-migrant shares) and structural
+# behavioural constants are global. Leaves printed as bare scalars are encoded in the
+# Section 4.1 common form.
+
+_schema_version: 1
+
+income_bands:
+  base_year: {value: 2024, conf: E, scope: local}
+  # Spec prints `boundaries_inr_mo: [25000, 75000, 200000]`; encoded as a sequence of
+  # Section 4.1 leaves so each boundary carries conf and scope.
+  boundaries_inr_mo:
+    - {value: 25000,  conf: E, scope: local}
+    - {value: 75000,  conf: E, scope: local}
+    - {value: 200000, conf: E, scope: local}
+  index_to_nominal_income: true
+
+logit:                # utility coefficients per income band
+  # scope: local — "Estimated per city from the observed distribution" (Section 4.9).
+  low:
+    b_access:      {value: 1.10, low: 0.8, high: 1.4, conf: G, scope: local}
+    b_price:       {value: -2.20, low: -3.0, high: -1.6, conf: G, scope: local}
+    b_amenity:     {value: 0.25, low: 0.1, high: 0.5, conf: G, scope: local}
+    b_disamenity:  {value: 0.60, low: 0.3, high: 1.0, conf: G, scope: local}
+    b_agglom:      {value: 0.55, low: 0.3, high: 0.8, conf: G, scope: local}
+    b_same_band:   {value: 0.70, low: 0.4, high: 1.0, conf: G, scope: local}
+    access_mode_weights:
+      walk:        {value: 0.35, conf: G, scope: local}
+      transit:     {value: 0.40, conf: G, scope: local}
+      two_wheeler: {value: 0.20, conf: G, scope: local}
+      car:         {value: 0.05, conf: G, scope: local}
+  mid:
+    b_access:      {value: 1.00, low: 0.7, high: 1.3, conf: G, scope: local}
+    b_price:       {value: -1.60, low: -2.2, high: -1.1, conf: G, scope: local}
+    b_amenity:     {value: 0.45, low: 0.2, high: 0.7, conf: G, scope: local}
+    b_disamenity:  {value: 0.80, low: 0.5, high: 1.2, conf: G, scope: local}
+    b_agglom:      {value: 0.40, low: 0.2, high: 0.6, conf: G, scope: local}
+    b_same_band:   {value: 0.50, low: 0.3, high: 0.8, conf: G, scope: local}
+    access_mode_weights:
+      walk:        {value: 0.15, conf: G, scope: local}
+      transit:     {value: 0.20, conf: G, scope: local}
+      two_wheeler: {value: 0.55, conf: G, scope: local}
+      car:         {value: 0.10, conf: G, scope: local}
+  upper_mid:
+    b_access:      {value: 0.70, low: 0.4, high: 1.0, conf: G, scope: local}
+    b_price:       {value: -1.00, low: -1.5, high: -0.6, conf: G, scope: local}
+    b_amenity:     {value: 0.85, low: 0.5, high: 1.2, conf: G, scope: local}
+    b_disamenity:  {value: 1.10, low: 0.7, high: 1.5, conf: G, scope: local}
+    b_agglom:      {value: 0.35, low: 0.2, high: 0.6, conf: G, scope: local}
+    b_same_band:   {value: 0.60, low: 0.3, high: 0.9, conf: G, scope: local}
+    access_mode_weights:
+      walk:        {value: 0.08, conf: G, scope: local}
+      transit:     {value: 0.12, conf: G, scope: local}
+      two_wheeler: {value: 0.40, conf: G, scope: local}
+      car:         {value: 0.40, conf: G, scope: local}
+  high:
+    b_access:      {value: 0.35, low: 0.1, high: 0.6, conf: G, scope: local}
+    b_price:       {value: -0.50, low: -0.9, high: -0.2, conf: G, scope: local}
+    b_amenity:     {value: 1.40, low: 1.0, high: 1.9, conf: G, scope: local}
+    b_disamenity:  {value: 1.50, low: 1.0, high: 2.1, conf: G, scope: local}
+    b_agglom:      {value: 0.20, low: 0.0, high: 0.4, conf: G, scope: local}
+    b_same_band:   {value: 0.80, low: 0.5, high: 1.2, conf: G, scope: local}
+    access_mode_weights:
+      walk:        {value: 0.05, conf: G, scope: local}
+      transit:     {value: 0.05, conf: G, scope: local}
+      two_wheeler: {value: 0.20, conf: G, scope: local}
+      car:         {value: 0.70, conf: G, scope: local}
+
+workers_per_household: {value: 1.45, low: 1.25, high: 1.70, conf: R, scope: local}
+affordability_multiple:
+  {value: 4.5, low: 3.5, high: 5.5, conf: R, scope: global,
+   citation: "Housing affordability multiples, RBI / NHB residential finance series"}
+service_jobs_per_resident:
+  {value: 0.215, low: 0.18, high: 0.25, conf: R, scope: global,
+   citation: "Local-service employment per resident, national urban employment panel"}
+
+wage_to_band:          # maps a job's median wage to the income band of the household
+  # household income = wage * workers_per_household * household_wage_premium
+  household_wage_premium:
+    {value: 1.15, low: 1.0, high: 1.3, conf: G, scope: global, citation: structural_assumption}
+
+agglomeration:
+  _provenance: {citation: "Agglomeration spillover elasticities, urban economics literature"}
+  spillover_phi: {value: 0.35, low: 0.20, high: 0.50, conf: G, scope: global}
+  max_iterations: {value: 12, conf: G, scope: global}     # conf not tagged in spec
+  convergence_tol: {value: 0.005, conf: G, scope: global} # conf not tagged in spec
+
+migration:
+  # share of new jobs filled by in-migrants vs existing residents
+  _provenance:
+    citation: "Sector in-migration shares, national labour-mobility panel"
+    fitted_on:
+      cities: [hyderabad, bengaluru, kochi, chennai, ahmedabad]
+      data_through: 2019
+  inmigrant_share_by_sector:
+    it_office:   {value: 0.45, low: 0.35, high: 0.60, conf: R, scope: global}
+    manuf_light: {value: 0.70, low: 0.55, high: 0.85, conf: R, scope: global}
+    manuf_heavy: {value: 0.55, low: 0.40, high: 0.70, conf: R, scope: global}
+    logistics:   {value: 0.40, low: 0.25, high: 0.55, conf: G, scope: global}
+    retail_svc:  {value: 0.20, low: 0.10, high: 0.35, conf: G, scope: global}
+    public_edu:  {value: 0.30, low: 0.20, high: 0.45, conf: G, scope: global}
+    construction: {value: 0.85, low: 0.70, high: 0.95, conf: R, scope: global}
+    agri:        {value: 0.05, conf: G, scope: global}
+
+# ---------------------------------------------------------------------------------------
+# Module 8 (Section 12) quantities described in prose rather than in the Section 4.6
+# fragment. Encoded here in the Section 4.1 form, as Section 12.4 instructs
+# ("`sqm_per_hh_by_band` is a parameter ... Put it in behaviour.yaml").
+# ---------------------------------------------------------------------------------------
+
+# scope: local — floorspace consumption per household is a local market quantity.
+sqm_per_hh_by_band:
+  low:       {value: 35,  conf: G, scope: local}
+  mid:       {value: 65,  conf: G, scope: local}
+  upper_mid: {value: 110, conf: G, scope: local}
+  high:      {value: 200, conf: G, scope: local}
+
+# Section 12.5: dormitory workers generate service jobs at a reduced rate. `~0.35 [G]`.
+dorm_service_factor: {value: 0.35, conf: G, scope: global, citation: structural_assumption}
+
+allocation:
+  _provenance: {citation: structural_assumption}
+  max_iter: {value: 50, conf: G, scope: global}       # Section 12.4 IPF iteration cap
+  null_test_tolerance: {value: 0.005, conf: G, scope: global}  # Module 8 ACCEPTANCE: 0.5%
+
+# scope: local — supplied by the city config or the city_class default (Section 20.2 step 14).
+# Section 12.2: "net of the job-driven component to avoid double counting". The values used
+# here are natural increase plus baseline migration, per that section's second option.
+natural_growth_rate: {value: null, requires_local: true, conf: R, scope: local}
+
+# NOT SPECIFIED ANYWHERE IN THE SUPPLIED SPEC — left null deliberately, following the
+# spec's own precedent for unfitted coefficients (`supply.elasticity_regression`).
+# Section 12.5 needs persons per household by band; Section 9.2 needs office sqm per seat.
+# Module 8 / Module 5 must raise rather than substitute a default.
+persons_per_household_by_band: {band_low: null, band_mid: null, band_upper_mid: null, band_high: null}
+office_sqm_per_seat: null
