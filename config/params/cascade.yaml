@@ -1,0 +1,47 @@
+# config/params/cascade.yaml
+# Section 1 of the spec lists `config/params/cascade.yaml`, but Section 4 defines no
+# cascade parameter file: per-archetype cascade ratios, radii, lags and targets live in
+# `archetypes.yaml` (Section 4.3) and are transcribed there. This file therefore holds the
+# cascade-mechanism parameters that Module 10 (Section 14) states in prose, encoded in the
+# Section 4.1 common form so that `ufe/layers/cascade.py` contains no numeric literals.
+# Section 4.9: "Cascade ratios and radii -> global. Industrial organisation, not local
+# geography." The mechanism parameters follow the same scope.
+
+_schema_version: 1
+
+_provenance: {citation: structural_assumption}
+
+# Section 14.1: "p_cascade = anchor.p_completion * 0.75".
+p_multiplier: {value: 0.75, conf: G, scope: global}
+
+# Section 14.2: "Cascades may themselves have cascades. Stop at generation 2."
+max_generation: {value: 2, conf: G, scope: global}
+
+candidate_filter:
+  # Section 14.1 candidate-cell filter. The zone classes and the power requirement are
+  # structural (not numeric parameters); the freight-access threshold is numeric but the
+  # spec gives no value ("freight_access_i > threshold"), so it is left null deliberately,
+  # following the spec's own precedent for unfitted coefficients. Module 10 must raise
+  # rather than substitute a default.
+  zone_classes: [industrial, mixed]
+  # Section 14.1 writes the gate as `zone_class in {industrial, mixed}`, but the landed
+  # `cells.zone_class` vocabulary (ufe/store/schemas.py ZONE_CLASSES) spells the industrial
+  # class `ind`. This is a naming map, not a parameter: it carries no magnitude, so it is a
+  # bare mapping rather than a Section 4.1 leaf. Module 10 raises if a name in
+  # `zone_classes` has no entry here rather than guessing at the vocabulary.
+  zone_class_map:
+    industrial: ind
+    mixed: mixed
+  require_util_power: true
+  freight_access_threshold: null
+
+firm_logit:
+  # Section 12.7 firm-allocation coefficients, used to spread ancillary jobs across
+  # candidate cells. NOT SPECIFIED anywhere in the supplied spec; left null deliberately.
+  enabled: false
+  coefficients:
+    c_market: null
+    c_labour: null
+    c_land: null
+    c_agglom: null
+    c_freight: null
