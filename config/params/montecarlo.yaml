@@ -1,0 +1,149 @@
+# config/params/montecarlo.yaml — Module 12 (spec Section 16).
+#
+# Section 16.1 says "Correlation matrix lives in `config/params/montecarlo.yaml`" but the
+# supplied spec never defines the file. Everything below that the spec DOES state is
+# transcribed verbatim and marked; everything else is an engine setting, tagged `conf: G`.
+#
+# TRANSCRIBED FROM SECTION 16.1 (the three named copula pairs):
+#   * p_completion across projects sharing an announcer          rho = 0.5
+#   * p_completion across public projects in the same state      rho = 0.3
+#   * phi_t and eta (demand price elasticity)                    rho = -0.3
+# TRANSCRIBED FROM SECTION 16.2:
+#   * <= 32 network states, 3 beta grid points ("raise to 5 if material"), 2000 draws,
+#     worker seed = base_seed + draw_index.
+# TRANSCRIBED FROM SECTION 16.3:
+#   * output quantiles p10, p25, p50, p75, p90.
+#
+# `montecarlo` is not a Section 4 namespace, so the loader validates these leaves
+# structurally (value/conf/scope) without demanding a `fitted_on` record. They still enter
+# `params.hash`, so changing a correlation invalidates every cache and every manifest.
+
+_schema_version: 1
+
+draws:
+  # Section 23 item 2 / Section 16.2: "2,000 draws over a 16-year horizon".
+  default_n: {value: 2000, conf: G, scope: global}
+  # Section 16.2: "each worker with seed = base_seed + draw_index".
+  base_seed: {value: 0, conf: G, scope: global}
+  # Section 12 ACCEPTANCE: "Doubling draw count changes p50 by less than 1%".
+  convergence_p50_rel_tol: {value: 0.01, conf: G, scope: global}
+
+parallel:
+  # Section 16.2 targets a 16-core machine. `1` runs in-process, which is what the test
+  # suite uses: multiprocessing is an optimisation, never a source of nondeterminism,
+  # because every draw's seed is a pure function of (base_seed, draw_index).
+  workers: {value: 1, conf: G, scope: global}
+  # Draws handed to a worker per task.
+  chunk_size: {value: 16, conf: G, scope: global}
+
+efficiency:
+  # Section 16.2 step 1: "Enumerate all network states across all draws (<= 32)."
+  max_network_states: {value: 32, conf: G, scope: global}
+  # Section 16.2: "pre-computing accessibility for a small grid of beta values (3 points:
+  # low, mid, high) per network state and interpolating in lnA space ... If it proves
+  # material in the ablation, raise to 5 points."
+  beta_grid_points: {value: 3, conf: G, scope: global}
+
+quantiles:
+  # Section 16.3's five reported quantiles, as probabilities.
+  p10: {value: 0.10, conf: G, scope: global}
+  p25: {value: 0.25, conf: G, scope: global}
+  p50: {value: 0.50, conf: G, scope: global}
+  p75: {value: 0.75, conf: G, scope: global}
+  p90: {value: 0.90, conf: G, scope: global}
+
+bands:
+  # Section 12 ACCEPTANCE: "verify ~80% of truths fall in the p10-p90 band", with a
+  # sampling tolerance because a finite ensemble will not hit 0.80 exactly.
+  nominal_coverage: {value: 0.80, conf: G, scope: global}
+  coverage_tolerance: {value: 0.10, conf: G, scope: global}
+
+p_completion:
+  # Section 16.1: "p_completion per project: Beta fitted to (low, value, high)". Layer 3
+  # COMPUTES p_completion from the announcer credibility score; it is not a YAML leaf and
+  # therefore has no (low, high) anywhere in the shipped config, so there is nothing to fit
+  # a Beta to. Standing in for the missing interval: a Beta with mean equal to the
+  # deterministic p_completion and the concentration below (alpha + beta). Larger =
+  # tighter around the deterministic value. REPORTED as a spec gap, not a fitted quantity.
+  beta_concentration: {value: 20.0, low: 4.0, high: 200.0, conf: G, scope: global}
+  # Numerical floor/ceiling so the Beta shape parameters stay positive when Layer 3 returns
+  # a p_completion of exactly 0 or 1.
+  mean_floor: {value: 1.0e-4, conf: G, scope: global}
+
+correlation:
+  # Section 16.1's Gaussian copula. Every entry is a Pearson correlation on the LATENT
+  # normal scale, imposed before the marginals are applied, exactly as a Gaussian copula
+  # requires. The Section 12 ACCEPTANCE block checks the realised sample correlation of
+  # `p_completion` for two projects sharing an announcer against `same_announcer`.
+  same_announcer_p_completion: {value: 0.5, low: 0.0, high: 0.9, conf: G, scope: global}
+  same_state_public_p_completion: {value: 0.3, low: 0.0, high: 0.9, conf: G, scope: global}
+  phi_eta: {value: -0.3, low: -0.9, high: 0.0, conf: G, scope: global}
+  # Ridge added to the diagonal when the assembled matrix is not positive definite (it
+  # need not be: the three pairwise rules above are stated independently of each other).
+  # The matrix is projected onto the nearest PD matrix and this is the floor eigenvalue.
+  min_eigenvalue: {value: 1.0e-8, conf: G, scope: global}
+  # Sample correlation tolerance used by the acceptance test ("0.5 +/- 0.1").
+  acceptance_tolerance: {value: 0.1, conf: G, scope: global}
+
+sampled_paths:
+  # The Section 16.1 sampling table, expressed as parameter paths rather than prose so the
+  # sampler contains no parameter names in Python. Each entry is sampled per draw with
+  # `Params.sample(path, rng)`; a path whose leaf carries no low/high yields its `value`
+  # unchanged, which is the correct no-op.
+  #
+  # `value` here is the list of dotted paths, `kind: category` marks it as an enumeration
+  # rather than a number so the Section 4.1 range check does not apply.
+  behaviour:
+    value:
+      - behaviour.logit.low.b_price
+      - behaviour.logit.mid.b_price
+      - behaviour.logit.upper_mid.b_price
+      - behaviour.logit.high.b_price
+      - behaviour.logit.low.b_access
+      - behaviour.logit.mid.b_access
+      - behaviour.logit.upper_mid.b_access
+      - behaviour.logit.high.b_access
+      - behaviour.workers_per_household
+    kind: category
+    conf: G
+    scope: global
+  supply:
+    value:
+      - supply.elasticity_class.dense_core
+      - supply.elasticity_class.constrained_periph
+      - supply.elasticity_class.typical_periph
+      - supply.elasticity_class.open_fringe
+      - supply.absorption.base_growth
+    kind: category
+    conf: G
+    scope: global
+  price:
+    value:
+      - price.hedonic.gamma_access_built
+      - price.hedonic.eta_demand_price
+      - price.overshoot.peak_factor
+      - price.overshoot.half_life_years
+    kind: category
+    conf: G
+    scope: global
+  accessibility:
+    value:
+      - accessibility.decay_beta.work.car
+      - accessibility.decay_beta.work.two_wheeler
+      - accessibility.decay_beta.work.transit
+      - accessibility.decay_beta.work.walk
+      - accessibility.decay_beta.education.default
+      - accessibility.decay_beta.retail.default
+      - accessibility.decay_beta.health.default
+    kind: category
+    conf: G
+    scope: global
+  # Section 16.1: "Accessibility ... mode shares; renormalise mode shares to sum 1".
+  # Every child of this node carrying a `share` leaf is drawn and then renormalised.
+  mode_share_parent: {value: "accessibility.modes", kind: category, conf: G, scope: global}
+  mode_share_leaf: {value: "share", kind: category, conf: G, scope: global}
+  # Section 16.1: "Macro phi_t: categorical by scenario_probabilities, then triangular
+  # within". These two prefixes drive that two-stage draw.
+  macro_scenarios_prefix: {value: "price.macro.scenarios", kind: category, conf: G, scope: global}
+  macro_probabilities_prefix:
+    {value: "price.macro.scenario_probabilities", kind: category, conf: G, scope: global}
