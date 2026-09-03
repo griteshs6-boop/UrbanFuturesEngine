@@ -4,7 +4,12 @@ version = "0.1.0"
 description = "Urban Futures Engine — multi-city urban development simulation"
 requires-python = ">=3.11"
 dependencies = [
-    "pandas>=2.2",
+    # Upper bound is deliberate. pandas 3 changes the default string dtype to a
+    # PyArrow-backed `str` whose null semantics differ: values that arrive as empty
+    # strings under pandas 2 surface as NaN, which trips the not_nullable pandera
+    # checks in ufe/store/schemas.py. The engine is tested against pandas 2 only.
+    # Removing this bound requires auditing every schema's nullability first.
+    "pandas>=2.2,<3",
     "numpy>=1.26",
     "pyarrow",
     "duckdb>=1.0",
