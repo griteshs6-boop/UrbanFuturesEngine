@@ -1,0 +1,70 @@
+# Module 13 — AI data pipeline settings (spec Section 17.2).
+#
+# CONTRACT rule 1: no numeric parameter lives in Python. Every value the AI pipeline needs
+# (model id, sampling settings, thresholds, tolerances) is read from this file by
+# ufe/ai/client.py::load_settings(). Nothing here is hardcoded in .py.
+
+model:
+  id: "claude-3-5-sonnet-20241022"
+  temperature: 0.0        # Section 17.2: "Temperature 0"
+  max_tokens: 4096
+  seed: 0
+
+retry:
+  # Section 17.2: "parse failures retry once with the validation error appended, then go
+  # to the review queue as parse_failed."
+  max_retries: 1
+
+review_queue:
+  # Section 17.1: "Attribute updates that do not change stage ... may auto-apply if
+  # extraction confidence exceeds 0.9." Stage transitions and new projects always require
+  # human approval regardless of this threshold (enforced in ufe/ai/queue.py).
+  confidence_auto_apply_threshold: 0.9
+
+narrative_verification:
+  # Section 17.9 verification gate: "confirms the stated figure matches to within rounding."
+  rel_tol: 0.01
+  abs_tol: 0.0005
+
+archetypes:
+  # AMBIGUITY (flagged in the Module 13 build report): Prompt A's schema (Section 17.3) says
+  # archetype_guess is "one of the allowed list below, or 'unknown'" and references
+  # "{archetype_list}", which the spec says is the 22 archetypes of "Section 10.2" of the
+  # original Urban_Futures_Engine_Specification.docx (per s04_4_parameter_files.md:174). That
+  # docx is not available in this build, and ufe/archetypes.yaml (owned by the Module 4/7
+  # parameter-file agent) did not exist on disk at the time this module was built. The list
+  # below is a best-effort placeholder inferred from context in Sections 3, 4, 8, 9 and 11 so
+  # that Prompt A's template can be filled deterministically; it MUST be replaced with the
+  # authoritative list from archetypes.yaml once that file exists. "unknown" is the prompt's
+  # separate fallback value, not one of the 22.
+  allowed:
+    - data_center
+    - it_park
+    - logistics_park
+    - manufacturing_heavy
+    - manufacturing_light
+    - metro
+    - highway
+    - port
+    - airport
+    - residential_township
+    - hospital
+    - university
+    - hotel
+    - mall
+    - warehouse
+    - power_plant
+    - refinery
+    - steel_plant
+    - textile_park
+    - sez
+    - office_campus
+    - renewable_energy
+
+modifiers:
+  # Prompt B's "{modifier_list_with_descriptions}" placeholder — Section 17.4 names the
+  # modifier slot but the credibility modifier table lives in config/params/credibility.yaml
+  # (owned by the Module 6 / Layer 3 agent, Section 10). Referenced here by name only; the
+  # descriptions are pulled from that file at prompt-fill time when it is present, else this
+  # placeholder text is used so the pipeline stays runnable in isolation.
+  fallback_description: "credibility modifier table (config/params/credibility.yaml) not available at fill time"
