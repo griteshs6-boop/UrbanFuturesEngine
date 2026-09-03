@@ -1,0 +1,111 @@
+# Licence policy table — Section 2.4.
+#
+# Classification is done in two steps by `ufe/licences.py`:
+#   1. Try an EXACT, case-insensitive match of the normalised licence string against
+#      `classes.<class>.exact`.
+#   2. Fall back to the ordered `rules` below, which are regex patterns matched against the
+#      raw licence text reported by importlib.metadata (License field, License-Expression,
+#      or `License ::` classifiers). Order matters: AGPL/LGPL must be checked before the bare
+#      "GPL" pattern, since "AGPL-3.0" and "LGPL-3.0" both contain the substring "GPL".
+#
+# A licence string that matches nothing is classified "unknown" and is treated as a build
+# failure (same as Red) — Section 2.4's rule is "no dependency is added without a recorded
+# licence check", and an unrecognised string is not a recorded check.
+
+classes:
+  green:
+    description: >
+      Use freely. Record attribution in ATTRIBUTIONS.md.
+    exact:
+      - MIT
+      - MIT License
+      - BSD
+      - BSD License
+      - BSD-2-Clause
+      - BSD-3-Clause
+      - BSD 3-Clause License
+      - BSD 3-Clause
+      - Apache-2.0
+      - Apache 2.0
+      - Apache Software License
+      - Apache License
+      - Apache License 2.0
+      - Apache License, Version 2.0
+      - ISC
+      - ISC License
+      - PSF
+      - Python Software Foundation License
+      - CC0-1.0
+      - CC0
+      - 0BSD
+      - Zlib
+      - "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0"
+
+  amber:
+    description: >
+      Dev-only, or a separate unmodified process. Requires written justification in
+      DEPENDENCIES.md.
+    exact:
+      - MPL-2.0
+      - Mozilla Public License 2.0 (MPL 2.0)
+      - LGPL
+      - LGPL-2.1
+      - LGPL-3.0
+      - EPL
+      - EPL-2.0
+
+  red:
+    description: >
+      Do not add. If genuinely necessary, escalate rather than working around it.
+    exact:
+      - AGPL-3.0
+      - GNU Affero General Public License v3
+      - GPL-2.0
+      - GPL-3.0
+      - GNU General Public License v2
+      - GNU General Public License v3
+      - SSPL
+      - Server Side Public License
+      - BUSL
+      - Business Source License
+
+# Ordered regex fallback rules, first match wins. Applied when no exact match is found.
+rules:
+  - pattern: "AGPL"
+    class: red
+  - pattern: "SSPL"
+    class: red
+  - pattern: "BUSL"
+    class: red
+  - pattern: "Business Source"
+    class: red
+  - pattern: "LGPL"
+    class: amber
+  - pattern: "Lesser General Public"
+    class: amber
+  - pattern: "MPL"
+    class: amber
+  - pattern: "EPL"
+    class: amber
+  - pattern: "\\bGPL\\b"
+    class: red
+  - pattern: "GNU General Public License"
+    class: red
+  - pattern: "\\bMIT\\b"
+    class: green
+  - pattern: "\\bBSD\\b"
+    class: green
+  - pattern: "Apache"
+    class: green
+  - pattern: "\\bISC\\b"
+    class: green
+  - pattern: "Python Software Foundation"
+    class: green
+  - pattern: "\\bPSF\\b"
+    class: green
+  - pattern: "CC0"
+    class: green
+  - pattern: "0BSD"
+    class: green
+  - pattern: "\\bZlib\\b"
+    class: green
