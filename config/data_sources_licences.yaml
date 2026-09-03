@@ -1,0 +1,107 @@
+# Data source licence table — Section 22.2.
+#
+# Every ingester's `provenance()['licence']` must resolve to a key (or an alias) in this file.
+# `ufe licences audit --data` cross-checks `config/sources.yaml` (owned by the ingestion agent)
+# against this table and fails on an unrecognised licence string.
+#
+# `commercial_use` and `bulk_redistribution_ok` are read by the Section 22 exposure rules:
+# a source with `bulk_redistribution_ok: false` must never be exposed as downloadable bulk
+# per-cell data (Section 22.1), regardless of whether it happens to be permissively licensed
+# for other purposes.
+
+sources:
+  openstreetmap:
+    aliases: ["osm", "OpenStreetMap"]
+    licence: "ODbL-1.0"
+    obligation: "Attribution + share-alike on distributed Derivative Databases"
+    commercial_use: true
+    bulk_redistribution_ok: false
+    attribution: "© OpenStreetMap contributors, under the Open Database Licence (ODbL) 1.0."
+
+  google_microsoft_open_buildings:
+    aliases: ["open_buildings", "google-microsoft-open-buildings"]
+    licence: "CC-BY-4.0"
+    obligation: "Attribution (verify the specific distribution)"
+    commercial_use: true
+    bulk_redistribution_ok: true
+    attribution: "Building footprints from the Google-Microsoft Open Buildings dataset, CC BY 4.0."
+
+  esa_worldcover:
+    aliases: ["worldcover", "esa-worldcover"]
+    licence: "CC-BY-4.0"
+    obligation: "Attribution"
+    commercial_use: true
+    bulk_redistribution_ok: true
+    attribution: "Land cover from ESA WorldCover, CC BY 4.0."
+
+  copernicus_dem:
+    aliases: ["copernicus-dem", "dem"]
+    licence: "Copernicus-Licence"
+    obligation: "Attribution"
+    commercial_use: true
+    bulk_redistribution_ok: true
+    attribution: "Contains modified Copernicus data, under the Copernicus licence."
+
+  sentinel2:
+    aliases: ["sentinel-2", "sentinel_2"]
+    licence: "Copernicus-Open-Licence"
+    obligation: "Attribution"
+    commercial_use: true
+    bulk_redistribution_ok: true
+    attribution: "Contains modified Copernicus Sentinel data, under the Copernicus open licence."
+
+  viirs_nightlights:
+    aliases: ["viirs", "nightlights"]
+    licence: "US-Government-Work"
+    obligation: "Citation requested"
+    commercial_use: true
+    bulk_redistribution_ok: true
+    attribution: "VIIRS nightlights courtesy of NOAA/NASA and the Earth Observation Group (EOG)."
+
+  worldpop:
+    aliases: ["world_pop"]
+    licence: "CC-BY-4.0"
+    obligation: "Attribution"
+    commercial_use: true
+    bulk_redistribution_ok: true
+    attribution: "Population estimates from WorldPop, CC BY 4.0."
+
+  ghsl:
+    aliases: ["ghs", "ghsl_pop"]
+    licence: "CC-BY-4.0"
+    obligation: "Attribution"
+    commercial_use: true
+    bulk_redistribution_ok: true
+    attribution: "Settlement data from the Global Human Settlement Layer (GHSL), CC BY 4.0."
+
+  government_open_data:
+    aliases: ["census", "budget_documents", "project_monitoring", "govt_open_data"]
+    licence: "Government-Open-Data"
+    obligation: "Attribution; check each portal"
+    commercial_use: true
+    bulk_redistribution_ok: true
+    attribution: "Government of India / State Government open data portals, per-portal terms apply."
+
+  registration_rera_ec_portals:
+    aliases: ["registration", "rera", "ec_portal", "encumbrance_certificate"]
+    licence: "Per-Portal-Terms"
+    obligation: "Per-portal terms; some prohibit bulk automated access"
+    commercial_use: null
+    bulk_redistribution_ok: false
+    attribution: "Registration/RERA/EC portal data used under each portal's published terms."
+
+  listing_portals:
+    aliases: ["listings", "listing_portal", "property_listings"]
+    licence: "Proprietary-ToS"
+    obligation: "Licence required"
+    commercial_use: false
+    bulk_redistribution_ok: false
+    attribution: null
+
+  broker_panel:
+    aliases: ["broker", "broker_panel_data"]
+    licence: "Contractual"
+    obligation: "Whatever the contract says"
+    commercial_use: null
+    bulk_redistribution_ok: false
+    attribution: null
