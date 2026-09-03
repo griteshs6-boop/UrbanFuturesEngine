@@ -1,0 +1,37 @@
+# config/city_classes.yaml — spec Section 20.2, "City-class defaults", transcribed verbatim.
+#
+# "Cities without local survey data inherit from config/city_classes.yaml." The loader
+# applies these as an override layer BELOW the city config's own `overrides:` — a city that
+# states a value keeps it; anything it omits is defaulted from its class and recorded in
+# the manifest under `class_defaults_applied`. Every defaulted path is `scope: local`, so
+# no class default can ever silence the Section 4.9 global-parameter enforcement.
+#
+# "Any city on class defaults must carry `calibration_level: class_default` and that flag
+# must appear in every report it produces."
+
+_schema_version: 1
+
+# Maps the class-default keys above onto parameter paths in the resolved tree. Declared as
+# data so that ufe/params.py contains no hard-coded parameter paths.
+_class_default_map:
+  mode_split.two_wheeler: accessibility.modes.two_wheeler.share.value
+  mode_split.walk:        accessibility.modes.walk.share.value
+  mode_split.transit:     accessibility.modes.transit.share.value
+  mode_split.car:         accessibility.modes.car.share.value
+  mode_split.metro:       accessibility.modes.metro.share.value
+  elasticity_class_default: supply.elasticity_class_default.value
+  natural_growth_rate:      behaviour.natural_growth_rate.value
+
+classes:
+  tier2_coastal_south:
+    mode_split: {two_wheeler: 0.42, walk: 0.20, transit: 0.19, car: 0.11, metro: 0.08}
+    elasticity_class_default: constrained_periph
+    natural_growth_rate: 0.021
+  tier2_inland_south:
+    mode_split: {two_wheeler: 0.45, walk: 0.19, transit: 0.18, car: 0.13, metro: 0.05}
+    elasticity_class_default: typical_periph
+    natural_growth_rate: 0.019
+  metro_south:
+    mode_split: {two_wheeler: 0.33, walk: 0.18, transit: 0.24, car: 0.13, metro: 0.12}
+    elasticity_class_default: dense_core
+    natural_growth_rate: 0.024
