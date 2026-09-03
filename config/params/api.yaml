@@ -1,0 +1,69 @@
+# config/params/api.yaml
+# Settings for the API surface (`ufe/api/`) and the report renderer (`ufe/api/report.py`).
+#
+# Section 4 defines no API parameter file — the API is described in Sections 22 and 23, not
+# Section 4 — so this file exists purely to satisfy Section 0.1 rule 3: no numeric literal
+# may appear in a `.py` file. Every leaf is written in the Section 4.1 common form so that
+# `ufe.params.load_params` validates it like any other file. It is NOT one of the Section 4
+# namespaces, so (like `ai.yaml` and `satellite.yaml`) it carries operational settings
+# rather than fitted coefficients, and its `conf` tags are all `G` accordingly.
+
+_schema_version: 1
+
+_provenance: {citation: structural_assumption}
+
+report:
+  # Section 23 item 7: "the report renderer's figure verification passes on a full
+  # generated report." A figure quoted in the narrative is checked against the run data to
+  # within rounding; these are the tolerances that define "within rounding". They mirror
+  # the Section 17.9 narrative-verification tolerances in `ai.yaml`, which govern the same
+  # check applied to Prompt G output.
+  figure_verification:
+    rel_tol: {value: 0.005, conf: G, scope: global}
+    abs_tol: {value: 0.05, conf: G, scope: global}
+    # Section 23 item 7 read strictly in both directions: a figure referenced by the
+    # narrative must exist, AND a figure generated must be referenced. An unreferenced
+    # figure is a silently-wrong report, so it fails the build too.
+    require_every_figure_referenced: true
+    require_every_reference_resolved: true
+
+  # Section 20.2: "Any city on class defaults must carry `calibration_level:
+  # class_default` and that flag must appear in every report it produces." The wording of
+  # the flag is data so that the renderer contains no prose about calibration.
+  calibration:
+    flag_level: class_default
+    flag_text: >-
+      CALIBRATION: this city is running on city-class defaults
+      (calibration_level: class_default). Per Section 20.2 the output below is a
+      demonstration, not a product. Treat every number as illustrative until the city has
+      been calibrated on local data.
+
+  # Section 0.2: confidence tags "are surfaced in report output". A report lists the tag of
+  # every parameter behind a headline number; the renderer is told which paths those are by
+  # its caller, and these are the tag letters it knows how to render.
+  confidence_tags: [E, R, G]
+
+  # Section 22.4: "It renders into: the product about page, every PDF report footer, and
+  # the API `/attributions` endpoint."
+  footer:
+    include_attributions: true
+    include_provenance: true
+
+title: Urban Futures Engine
+
+# Section 22.1: the product exposes Produced Work only. This is a description of the
+# constraint for the about page, not a switch — the guard is structural (see
+# `ufe/api/schemas.py`).
+exposure_policy: produced_work_only
+
+about:
+  product: Urban Futures Engine
+  summary: >-
+    Scenario simulation of urban development. The API returns computed outputs only —
+    prices, rankings, factor loadings, residuals, scenario results, rendered maps and
+    reports. It never returns the underlying cell grid or any per-cell attribute derived
+    from OpenStreetMap (Section 22.1, ODbL Produced Work rule).
+
+serve:
+  host: 127.0.0.1
+  port: {value: 8000, conf: G, scope: global}
