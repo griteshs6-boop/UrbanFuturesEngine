@@ -1,0 +1,306 @@
+# config/ingest.yaml — operational constants for Module 2 (data ingestion).
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# CONTRACT.md rule 1 / spec Section 0.1 rule 3 forbid numeric literals in Python. Everything
+# below is a number that `ufe/ingest/*.py` needs. None of it is a *model* parameter — no
+# coefficient, elasticity or behavioural threshold lives here — so it is deliberately NOT
+# part of the `Params` tree (`config/params/`), exactly like `config/sources.yaml`. It is
+# read by `ufe.ingest.core.load_ingest_config()`.
+#
+# Where the spec says a number belongs in `config/params/` or in `config/cities/vizag.yaml`
+# and it is NOT there, the ingester reads it from `Params` and lets `MissingParameter`
+# propagate. Those gaps are listed under `reported_parameter_gaps` at the bottom of this
+# file and in the build report; they are not silently defaulted here.
+
+_schema_version: 1
+
+# Calendar structure, not model parameters. Here only so no module needs the literal 12.
+calendar:
+  months_per_year: 12
+  months_per_quarter: 3
+
+# --------------------------------------------------------------------------------------
+# Reader / cache behaviour (Section 6, `fetch(city, force=False)`)
+# --------------------------------------------------------------------------------------
+reader:
+  cache_root: cache/ingest
+  raw_root: data/raw
+  # Some government portals publish a rate limit in their terms of service. The adapter
+  # declares it in `access_terms()`; the reader sleeps this long between requests when the
+  # adapter does not state a stricter figure (Section 6.0, Section 22.2).
+  default_min_seconds_between_requests: 1.0
+  http_timeout_seconds: 60.0
+
+# --------------------------------------------------------------------------------------
+# 6.1 Terrain — Copernicus DEM GLO-30
+# --------------------------------------------------------------------------------------
+terrain:
+  # `slope_pct = 100 * sqrt((dz/dx)^2 + (dz/dy)^2)` (Section 6.1).
+  slope_percent_scale: 100.0
+  # A DEM pixel of exactly this value is void (Copernicus DEM sea/void convention is a
+  # large negative sentinel; the tile's own nodata tag is preferred when present).
+  fallback_nodata: -32768.0
+  # Elevations below this are physically impossible for a land DEM and are treated as void
+  # rather than propagated into `elev_m`.
+  min_plausible_elev_m: -500.0
+  max_plausible_elev_m: 9000.0
+
+# --------------------------------------------------------------------------------------
+# 6.2 Land cover — ESA WorldCover 10 m, 2021 vintage
+# --------------------------------------------------------------------------------------
+landcover:
+  # WorldCover class code -> the `landcover` vocabulary of ufe.store.schemas.
+  class_codes:
+    10: tree_cover
+    20: shrubland
+    30: grassland
+    40: cropland
+    50: builtup
+    60: bare
+    70: snow_ice
+    80: water
+    90: herbaceous_wetland
+    95: mangroves
+    100: moss_lichen
+  # Section 6.2: "water (80), permanent wetland (90), mangroves (95) -> hard gate".
+  undevelopable_classes: [80, 90, 95]
+  # Section 6.2: "Tree cover (10) -> hard gate only inside declared forest boundary".
+  conditional_undevelopable_classes: [10]
+  # Section 6 ACCEPTANCE: "sum of landcover_fracs = 1 +- 1e-3".
+  frac_sum_tolerance: 0.001
+
+# --------------------------------------------------------------------------------------
+# 6.3 Buildings — Google-Microsoft Open Buildings (every vintage)
+# --------------------------------------------------------------------------------------
+buildings:
+  # Section 6.3: `storeys = max(1, round(height_m / 3.2))`.
+  metres_per_storey: 3.2
+  # Section 6.3 says the `storeys = f(zone_class)` fallback lookup lives in `vizag.yaml`.
+  # It does not (see `reported_parameter_gaps`), so the ingester reads
+  # `city_config['storeys_by_zone']` first and only falls back to this structural default,
+  # marking every affected cell imputed and lowering `data_conf`.
+  storeys_by_zone_fallback:
+    res: 2.0
+    com: 3.0
+    ind: 1.0
+    mixed: 3.0
+    public: 2.0
+    agri: 1.0
+    eco: 1.0
+  # Residential share of floorspace by zone_class, used only when no typology layer
+  # exists. Section 6.3: "This is a known weak point — mark data_conf down accordingly."
+  res_share_by_zone_fallback:
+    res: 0.95
+    com: 0.10
+    ind: 0.05
+    mixed: 0.55
+    public: 0.20
+    agri: 0.80
+    eco: 0.50
+  # `builtup_frac` is a fraction; footprint sums exceeding the cell area indicate a
+  # geometry problem and are clipped to this ceiling (Section 6 ACCEPTANCE: [0, 1]).
+  builtup_frac_ceiling: 1.0
+
+# --------------------------------------------------------------------------------------
+# 6.4 Population — Census wards, then GHSL POP, then WorldPop
+# --------------------------------------------------------------------------------------
+population:
+  # Section 6.4 "Sources, in priority order".
+  source_priority: [census_wards, ghsl_pop, worldpop]
+  # Section 6.4: growth from the census year to `base_year` using district growth applied
+  # uniformly. The census vintage is a property of the source, not of the city.
+  census_year: 2011
+  # Section 6 ACCEPTANCE: "Population sums to within 5% of the district total".
+  district_total_tolerance: 0.05
+  # A ward with no residential floorspace at all cannot be refined dasymetrically; the
+  # ward total is then spread by area. This is flagged as imputed.
+  min_ward_floorspace_sqm: 1.0
+
+# --------------------------------------------------------------------------------------
+# 6.5 OSM — state .osm.pbf clipped to the halo
+# --------------------------------------------------------------------------------------
+osm:
+  # Section 6.5: "util_power = 1 if a substation is within 2_000 m OR an 11kV/33kV line
+  # passes within 500 m".
+  substation_radius_m: 2000.0
+  power_line_radius_m: 500.0
+  power_line_voltages_v: [11000, 33000]
+  # `highway=` values counted as arterial for `dist_arterial_m`.
+  arterial_highway_values: [motorway, trunk, primary, secondary]
+  # POI category -> the `amenity`/`shop`/`office` tag values that count for it
+  # (Section 6.5, feeding Section 8.2's opportunity columns).
+  poi_categories:
+    retail: [supermarket, marketplace, mall, convenience, department_store, retail]
+    education: [school, college, university, kindergarten]
+    health: [hospital, clinic, doctors, pharmacy]
+  # POI density is a *proxy* for jobs_by_sector (Section 6.5). Jobs per POI by sector
+  # index — a structural guess, flagged imputed on every cell it touches.
+  jobs_per_poi:
+    retail_svc: 8.0
+    public_edu: 25.0
+  # Cells further than this from any mapped arterial are reported at this ceiling rather
+  # than as a null, so `dist_arterial_m` stays non-nullable per the schema.
+  dist_arterial_ceiling_m: 50000.0
+
+# --------------------------------------------------------------------------------------
+# 6.6 Nightlights — VIIRS DNB monthly cloud-free composites
+# --------------------------------------------------------------------------------------
+nightlights:
+  # Section 6.6: "drop values < 0, cap at the 99.9th percentile per month".
+  min_valid_radiance: 0.0
+  cap_percentile: 99.9
+  first_available_year: 2012
+  months_per_year: 12
+
+# --------------------------------------------------------------------------------------
+# 6.7 Prices
+# --------------------------------------------------------------------------------------
+prices:
+  # Section 6.7a: "the cell containing the geocoded point with a 500 m Gaussian smear".
+  point_smear_sigma_m: 500.0
+  # Gaussian weights below this are treated as zero (keeps the smear sparse and the
+  # result deterministic irrespective of cell ordering).
+  smear_weight_floor: 0.01
+  # Section 6.7: "If fewer than 30 broker observations exist, set uplift to the single
+  # median and set data_conf for the price column to 0.4."
+  min_broker_observations: 30
+  low_confidence_data_conf: 0.4
+  # The uplift regression of Section 6.7 is `uplift ~ dist_cbd + zone_class`. A zone with
+  # fewer observations than this contributes no zone term.
+  min_observations_per_zone: 3
+  # Section 6.7: rents "impute from the res-8 parent median; if that is missing, mark the
+  # overheating detector unavailable for that cell rather than imputing further."
+  rent_parent_min_observations: 1
+  # Section 6.7 / 22.2: a source marked `tos_restricted` may not run in this mode.
+  restricted_modes: [production]
+  # Unit normalisation. Indian registration departments publish guidance values per square
+  # yard; Section 0.3 fixes the engine's price unit at INR per square foot. The *adapter*
+  # does this conversion, so no ingester has to know a state's publishing convention.
+  sqft_per_sqyd: 9.0
+
+# --------------------------------------------------------------------------------------
+# 6.9 Cadastral — Bhu-Naksha parcels
+# --------------------------------------------------------------------------------------
+cadastral:
+  # A parcel is attributed to the cell containing its centroid; slivers below this area
+  # are survey noise, not parcels.
+  min_parcel_sqm: 1.0
+  # Fallback (Section 6.9): infer fragmentation from the footprint size distribution.
+  # mean_parcel_sqm ~ mean_footprint_sqm / plot_coverage_ratio.
+  fallback_plot_coverage_ratio: 0.55
+
+# --------------------------------------------------------------------------------------
+# 6.10 Zoning / CZMP — contracted GIS deliverables
+# --------------------------------------------------------------------------------------
+zoning:
+  required_attributes: [zone_class, permitted_far, plan_name, plan_year, source_sheet]
+  crz_required_attributes: [crz_class]
+  # A cell whose zoned area share is below this is treated as unzoned (`agri` default in
+  # the master plan convention) and flagged imputed.
+  min_zoned_area_share: 0.5
+  unzoned_zone_class: agri
+  no_crz_class: none
+
+# --------------------------------------------------------------------------------------
+# Section 20.2 step 9 — the coverage gate
+# --------------------------------------------------------------------------------------
+coverage:
+  # Section 20.2 step 9, verbatim: "Refuse to proceed if price coverage < 40% of populated
+  # cells." Read by ufe.ingest.coverage.assert_coverage — never a Python literal.
+  min_real_fraction:
+    price_res_inr_sqft: 0.40
+  # "populated cells" = in-city cells carrying at least this much population.
+  populated_min_population: 1.0
+  # Columns the report always lists, even at zero coverage, so an absent layer is visible
+  # rather than missing from the table.
+  always_report:
+    - elev_m
+    - slope_pct
+    - landcover
+    - undevelopable_frac
+    - builtup_frac
+    - floorspace_res_sqm
+    - floorspace_com_sqm
+    - population
+    - zone_class
+    - permitted_far
+    - crz_class
+    - price_res_inr_sqft
+    - price_land_inr_sqft
+    - rent_res_inr_sqft_mo
+    - parcel_count
+    - mean_parcel_sqm
+    - util_power
+    - dist_cbd_m
+    - dist_coast_m
+    - dist_arterial_m
+    - nightlight
+
+# --------------------------------------------------------------------------------------
+# data_conf (Section 3.1, Section 6.0 "A missing capability lowers data_conf")
+# --------------------------------------------------------------------------------------
+data_conf:
+  # data_conf = clip(base - sum(weight_c for each imputed column c)
+  #                       - missing_capability_penalty * n_missing_capabilities, floor, 1)
+  base: 1.0
+  floor: 0.05
+  default_column_weight: 0.03
+  column_weights:
+    price_res_inr_sqft: 0.20
+    price_land_inr_sqft: 0.08
+    rent_res_inr_sqft_mo: 0.05
+    population: 0.10
+    floorspace_res_sqm: 0.08
+    floorspace_com_sqm: 0.08
+    builtup_frac: 0.10
+    zone_class: 0.10
+    permitted_far: 0.10
+    crz_class: 0.05
+    mean_parcel_sqm: 0.05
+    parcel_count: 0.05
+    elev_m: 0.05
+    slope_pct: 0.05
+    nightlight: 0.03
+  missing_capability_penalty: 0.05
+
+# --------------------------------------------------------------------------------------
+# 6.11 Projects — validation of the human-verified registry
+# --------------------------------------------------------------------------------------
+projects:
+  # Section 6.11: a stage transition needs a project_history row with changed_by != 'ai'.
+  forbidden_history_author_prefix: "ai"
+
+# --------------------------------------------------------------------------------------
+# Known-answer tests (Section 6 ACCEPTANCE)
+# --------------------------------------------------------------------------------------
+acceptance:
+  # "two points 10 km apart in the metric CRS return 10,000 +- 50 m"
+  distance_known_answer_m: 10000.0
+  distance_tolerance_m: 50.0
+
+# --------------------------------------------------------------------------------------
+# Parameter paths the spec says should exist and which do not. Reported, never defaulted.
+# --------------------------------------------------------------------------------------
+reported_parameter_gaps:
+  - path: behaviour.persons_per_household_by_band
+    why: >
+      Section 6.4 needs households = population / persons-per-household. The leaf exists in
+      behaviour.yaml but every band is null, so ufe.ingest.population.households_from_population
+      raises MissingParameter instead of inventing a household size.
+  - path: "city_config['storeys_by_zone']"
+    why: >
+      Section 6.3: "Otherwise storeys = f(zone_class) from a lookup in vizag.yaml".
+      config/cities/vizag.yaml has no such block; buildings.py falls back to
+      buildings.storeys_by_zone_fallback here and flags every affected cell imputed.
+  - path: "city_config['district_population']"
+    why: >
+      Section 6 ACCEPTANCE requires population to sum to within 5% of the district total for
+      base_year, and Section 6.4 requires a district growth rate to grow 2011 forward.
+      Neither is in the city config, so both are supplied by the caller/adapter and the
+      acceptance check is skipped (loudly) when absent.
+# Resolved gaps are removed from the list above rather than left to rot. For the record:
+# `accessibility.grid.halo_buffer_m` was listed here when it was missing from the YAML. It
+# now exists in config/params/accessibility.yaml (50000 m, conf: G, scope: global), so it is
+# no longer a gap. Ingesters clip to the cell set they are handed rather than re-deriving
+# the halo, so it never blocked Module 2 in any case.
