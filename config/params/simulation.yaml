@@ -1,0 +1,60 @@
+# config/params/simulation.yaml — Module 11 (spec Section 15) operational settings.
+#
+# WHY THIS FILE EXISTS. Section 15 names no parameter file of its own, but Section 0.1
+# rule 3 forbids numeric literals in Python, and the runner needs a horizon default, a
+# default seed, cache sizes, conservation tolerances and provenance policy. Rather than
+# scatter them through `ufe/sim/runner.py` they live here, in the Section 4.1 leaf form
+# (`value` / `conf` / `scope`), so `Params` validates them and they enter `params.hash`
+# — a change to any of them therefore invalidates every cache keyed by the params hash.
+#
+# `simulation` is not one of the Section 4 namespaces, so the loader validates these
+# leaves structurally (value/conf/scope, range sanity) but does not demand a
+# `fitted_on` block: none of these are fitted quantities, they are engine settings.
+# Every one is tagged `conf: G` (structural guess) accordingly.
+
+_schema_version: 1
+
+horizon:
+  # `ufe sim run --city vizag` with no --horizon simulates base_year+1 .. this year.
+  # Section 23 item 2 uses 2035 as the reference horizon.
+  default_last_year: {value: 2035, conf: G, scope: local}
+  # A guard, not a model quantity: a horizon longer than this is a typo, not a scenario.
+  max_years: {value: 40, conf: G, scope: global}
+
+seed:
+  # Section 15.1's `seed: int = 0`.
+  default: {value: 0, conf: G, scope: global}
+
+provenance:
+  # Section 23 item 5. When true, `run()` refuses to proceed unless the working tree is
+  # clean and the git commit is known. `allow_dirty=True` (CLI: --allow-dirty) overrides
+  # it explicitly, and the override is recorded in the manifest.
+  require_clean_git: {value: true, conf: G, scope: global}
+  # Length of the short commit / hash prefixes printed in reports.
+  short_hash_length: {value: 12, conf: G, scope: global}
+
+cache:
+  # Section 15.3. Accessibility matrices are keyed by
+  # (mode, network_state_hash, congestion_param_hash); the base-year substrate by
+  # snapshot_hash. NOTHING is keyed by city alone. These are entry caps on the
+  # in-process caches, not on the on-disk travel-time cache.
+  matrix_entries: {value: 32, conf: G, scope: global}
+  substrate_entries: {value: 4, conf: G, scope: global}
+  accessibility_entries: {value: 96, conf: G, scope: global}
+
+network:
+  # When a NetworkEffect opens in a year for which no precomputed MatrixSet was supplied,
+  # `true` raises (the simulation may never call a routing backend) and `false` reuses the
+  # base network state and records `network_state_missing` in the year's diagnostics.
+  strict_states: {value: false, conf: G, scope: global}
+
+conservation:
+  # Section 15/Section 12 accounting identities the runner asserts every year. These are
+  # floating-point tolerances on a *relative* error, not model parameters.
+  households_rel_tol: {value: 1.0e-9, conf: G, scope: global}
+  floorspace_rel_tol: {value: 1.0e-9, conf: G, scope: global}
+
+output:
+  # Percentile used for the "top decile" statistic and for the city-median comparison
+  # in Section 16.3, expressed as a share of cells.
+  top_decile_share: {value: 0.10, conf: G, scope: global}
