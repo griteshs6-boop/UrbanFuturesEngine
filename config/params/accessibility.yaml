@@ -1,0 +1,130 @@
+# config/params/accessibility.yaml
+# Spec Section 4.2, transcribed. Two deliberate, documented departures from the printed
+# fragment, both required by Section 4.1 and by the Section 4 ACCEPTANCE block:
+#   1. Leaves the fragment printed as bare scalars (e.g. `sim_resolution: 9`) are encoded
+#      in the Section 4.1 common parameter form {value, conf, scope}.
+#   2. `scope:` is added to every leaf (Section 4.1: "mandatory on every leaf and is
+#      enforced"), assigned from the Section 4.9 scope table. `conf:` is added where the
+#      fragment omitted it; those additions are marked "# conf not tagged in spec".
+# `_provenance` blocks supply the `fitted_on` / `citation` record that Section 4.1 and the
+# Section 4 ACCEPTANCE block require of every `scope: global` leaf; it is inherited by all
+# leaves below the block unless a leaf carries its own.
+
+_schema_version: 1
+
+grid:
+  # Structural engine configuration, not an estimated quantity. conf not tagged in spec.
+  _provenance: {citation: structural_assumption}
+  sim_resolution:    {value: 9,    conf: G, scope: global}
+  report_resolution: {value: 8,    conf: G, scope: global}
+  dest_resolution:   {value: 8,    conf: G, scope: global}
+  dest_max_count:    {value: 1500, conf: G, scope: global}
+  dest_min_jobs:     {value: 25,   conf: G, scope: global}
+  # Section 5.1 step 2: "Buffer it outward by 50_000 metres ... the analysis halo."
+  # Structural engine configuration like its siblings above, not an estimated local
+  # quantity, so scope: global (Section 4.9 has no row for it; the grid block's
+  # `_provenance: {citation: structural_assumption}` supplies the citation a global leaf
+  # needs). conf not tagged in spec.
+  halo_buffer_m:     {value: 50000, conf: G, scope: global}
+
+purposes:
+  # Trip-purpose weights for the log-combination in Section 8.1. conf not tagged in spec.
+  _provenance:
+    citation: "Trip-purpose shares, Indian city travel-demand surveys (Section 4.2 table)"
+  work:      {weight: {value: 0.55, conf: R, scope: global}}
+  retail:    {weight: {value: 0.20, conf: R, scope: global}}
+  education: {weight: {value: 0.15, conf: R, scope: global}}
+  health:    {weight: {value: 0.10, conf: R, scope: global}}
+
+decay_beta:            # exp(-beta * minutes)
+  # Section 4.9: gravity decay beta is scope:global ("Behavioural; see the escape hatch").
+  _provenance:
+    citation: "Gravity-model decay parameters, urban accessibility literature; see Section 4.9"
+  work:
+    car:          {value: 0.045, low: 0.035, high: 0.055, conf: R, scope: global}
+    two_wheeler:  {value: 0.045, low: 0.035, high: 0.055, conf: R, scope: global}
+    transit:      {value: 0.037, low: 0.030, high: 0.045, conf: R, scope: global}
+    walk:         {value: 0.16,  low: 0.12,  high: 0.20,  conf: R, scope: global}
+  education:      {default: {value: 0.075, low: 0.06, high: 0.09, conf: R, scope: global}}
+  retail:         {default: {value: 0.12,  low: 0.09, high: 0.15, conf: R, scope: global}}
+  health:         {default: {value: 0.027, low: 0.020, high: 0.035, conf: R, scope: global}}
+
+modes:
+  # Section 4.9: mode split shares are scope:local. Defaulted from
+  # config/city_classes.yaml when the city has no local survey (Section 20.2 step 13).
+  # Section 2.3: the twowheeler OSRM profile reduces car speeds by `speed_factor`
+  # ("default 0.85 of car free-flow on arterials"). Local network conditions and local
+  # enforcement, like `speeds_kmh` below, hence scope: local (Section 4.9 has no row for
+  # it; the nearest rows -- mode split shares, and speeds -- are both local).
+  # Section 2.3 also mentions a 1.15 factor on congested local streets, implemented as
+  # class-specific overrides; no such override table exists in the YAML yet -- reported,
+  # not invented.
+  two_wheeler:
+    share: {value: 0.40, low: 0.35, high: 0.45, conf: R, scope: local}
+    speed_factor: {value: 0.85, conf: R, scope: local}
+    osrm_profile: twowheeler
+  walk:        {share: {value: 0.21, low: 0.18, high: 0.25, conf: E, scope: local}, osrm_profile: foot}
+  transit:     {share: {value: 0.20, low: 0.15, high: 0.25, conf: R, scope: local}, osrm_profile: null}
+  car:         {share: {value: 0.11, low: 0.08, high: 0.15, conf: R, scope: local}, osrm_profile: car}
+  metro:       {share: {value: 0.08, low: 0.05, high: 0.15, conf: R, scope: local}, osrm_profile: null}
+
+speeds_kmh:            # used for the synthetic transit graph and OSRM profile overrides
+  # Local network conditions and local enforcement; not part of the cross-city panel.
+  expressway:       {value: 75,  low: 65, high: 85, conf: E, scope: local}
+  national_highway: {value: 52,  low: 45, high: 60, conf: E, scope: local}
+  arterial:         {value: 26,  low: 22, high: 30, conf: R, scope: local}
+  collector:        {value: 18,  low: 15, high: 22, conf: R, scope: local}
+  local:            {value: 12,  low: 10, high: 15, conf: R, scope: local}
+  walk:             {value: 4.5, conf: E, scope: local}
+  metro_line_haul:  {value: 32,  low: 28, high: 36, conf: E, scope: local}
+
+congestion:
+  # arterial speed multiplier = 1 - k * builtup_frac_corridor
+  _provenance: {citation: structural_assumption}
+  k:     {value: 0.35, low: 0.20, high: 0.50, conf: G, scope: global}
+  floor: {value: 0.45, conf: G, scope: global}      # never slow below 45% of free-flow
+
+transit_penalties_min:
+  # Service-design quantities: headway and dwell are local operating decisions.
+  metro_dwell_per_station: {value: 0.5, conf: E, scope: local}
+  metro_headway_half:      {value: 3.0, low: 2.0, high: 5.0, conf: R, scope: local}
+  transfer:                {value: 3.0, conf: R, scope: local}
+  access_egress_extra:     {value: 1.0, conf: G, scope: local}
+
+station_decay:           # walk-network distance, metres
+  # Section 4.9: station-proximity decay feeds the archetype premium fields and is part of
+  # the cross-city evidence base, hence scope:global.
+  # citation: station-premium distance-decay meta-analyses (Debrezion et al. 2007;
+  # Cervero & Kang 2011). Carried per band in `_provenance` because a YAML sequence
+  # cannot also carry a mapping key.
+  - {_provenance: &station_decay_cite {citation: "Debrezion et al. 2007; Cervero & Kang 2011"},
+     max_m: 400,  w: {value: 1.00, conf: E, scope: global}}
+  - {_provenance: *station_decay_cite,
+     max_m: 800,  w: {value: 0.60, conf: E, scope: global}}
+  - {_provenance: *station_decay_cite,
+     max_m: 1200, w: {value: 0.30, conf: E, scope: global}}
+  - {_provenance: *station_decay_cite,
+     max_m: 1600, w: {value: 0.12, conf: E, scope: global}}
+  - {_provenance: *station_decay_cite,
+     max_m: 6000, w: {value: 0.15, conf: R, scope: global}, requires: feeder_or_park_ride}
+
+# ---------------------------------------------------------------------------------------
+# Parameters required by Module 4 (Section 8) and Module 12 (Section 16.2) that Section 4.2
+# describes in prose rather than in the YAML fragment. Encoded here in the Section 4.1 form.
+# ---------------------------------------------------------------------------------------
+
+opportunity_imputation:
+  # Section 8.2 fallbacks when a measured opportunity count is unavailable.
+  _provenance: {citation: structural_assumption}
+  retail_sqm_per_poi:        {value: 120, conf: G, scope: global}
+  education_seats_per_poi:   {value: 400, conf: G, scope: global}
+  health_beds_per_poi:       {value: 30,  conf: G, scope: global}
+
+matrix:
+  # Section 8.3 / 16.2 engine limits.
+  _provenance: {citation: structural_assumption}
+  chunk_size:            {value: 500,  conf: G, scope: global}   # OSRM /table chunking
+  walk_access_cap_m:     {value: 2000, conf: G, scope: global}   # Section 8.3 walk-access cap
+  max_network_states:    {value: 32,   conf: G, scope: global}   # Section 8.3 state cap
+  beta_grid_points:      {value: 3,    conf: G, scope: global}   # Section 16.2 interpolation grid
+  float32_tolerance:     {value: 1.0e-5, conf: G, scope: global} # Section 8 ACCEPTANCE tolerance
