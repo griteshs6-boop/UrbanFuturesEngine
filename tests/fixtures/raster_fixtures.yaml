@@ -1,0 +1,142 @@
+# Generation constants for tests/fixtures/raster_fixtures.py.
+#
+# Fixture values, not model parameters — they never enter config/params/. They live here so
+# the fixture module contains no numeric literals beyond 0 and 1 (spec Section 0.1 rule 3).
+
+# Matches config/cities/vizag.yaml: crs_metric: EPSG:32644 (UTM 44N).
+crs_metric: "EPSG:32644"
+n_cells: 60
+# Section 6.1: slope_pct = 100 * sqrt((dz/dx)^2 + (dz/dy)^2).
+slope_percent_scale: 100.0
+
+raster:
+  pixel_m: 30.0
+  margin_m: 300.0
+  # Pixel centres sit half a pixel in from the origin.
+  pixel_centre_offset: 0.5
+
+dem:
+  # An exact plane: elev = base + gx*(x-x0) + gy*(y-y0), so the true slope is
+  # 100*hypot(gx, gy) = 100*hypot(0.03, 0.04) = 5.0 percent everywhere.
+  pixel_m: 30.0
+  base_elev_m: 12.0
+  gradient_x: 0.03
+  gradient_y: 0.04
+  nodata: -32768.0
+
+landcover:
+  # ESA WorldCover codes: 50 built-up, 40 cropland, 10 tree cover, 80 water.
+  pixel_m: 10.0
+  codes: [50, 40, 10, 80]
+  nodata: 0
+
+height:
+  # 12.8 m / 3.2 m per storey = exactly 4 storeys.
+  pixel_m: 30.0
+  height_m: 12.8
+  nodata: -9999.0
+
+population_raster:
+  pixel_m: 100.0
+  persons_per_pixel: 25.0
+  nodata: -9999.0
+
+nightlights:
+  pixel_m: 500.0
+  year: 2024
+  # Three months. Median of [1.0, 2.0, 6.0] = 2.0 — different from the mean (3.0), which is
+  # the point of Section 6.6's preference for the median.
+  monthly_radiance: [1.0, 2.0, 6.0]
+  outlier_radiance: 900.0
+  negative_radiance: -5.0
+  nodata: -9999.0
+
+footprints:
+  # A 40 m square is exactly 1600 m2.
+  side_m: 40.0
+  every_nth_cell: 3
+  vintages: [2018, 2021, 2023]
+
+wards:
+  count: 3
+  populations: [12000.0, 8000.0, 5000.0]
+
+forest:
+  # The forest covers the western 50% of the cell box.
+  x_share: 0.5
+
+power:
+  n_substations: 2
+  in_scope_voltage: 11000
+  out_of_scope_voltage: 400000
+
+roads:
+  arterial_value: primary
+
+pois:
+  # One value per POI category in config/ingest.yaml: osm.poi_categories.
+  tag_values: [supermarket, school, hospital]
+  per_tag: 2
+
+parcels:
+  n_cells: 4
+  # Two sizes so the Gini coefficient is non-zero: 20 m and 60 m squares.
+  side_m: [20.0, 60.0]
+  offset_m: 70.0
+
+zoning:
+  zones: [res, com, ind]
+  permitted_far: [2.0, 3.5, 1.5]
+  plan_name: "Synthetic Master Plan 2041"
+  plan_year: 2021
+  # Used when cover_all=False, to exercise the outside-coverage flag.
+  partial_x_share: 0.4
+
+czmp:
+  classes: ["I", "II", "III"]
+  x_share: 0.3
+  plan_name: "Synthetic CZMP 2019"
+
+utilities:
+  water_x_share: 0.7
+  sewer_x_share: 0.35
+
+guidance:
+  # Published per square yard, as Indian registration departments do. 4500/9 = 500 INR/sqft.
+  inr_per_sqyd: [4500.0, 9000.0, 18000.0]
+  effective_year: 2024
+
+listings:
+  ask_inr_sqft: [5000.0, 6000.0]
+  rent_inr_sqft_mo: [18.0, 22.0]
+  x_share: 0.5
+  point_every_nth_cell: 7
+  point_ask_inr_sqft: 7000.0
+  point_rent_inr_sqft_mo: 25.0
+
+broker:
+  n: 5
+  date: "2024-06-15"
+  area_sqft: 1000.0
+  inr_sqft: 5500.0
+  property_type: apartment
+  transaction_type: sale
+
+rera:
+  n: 6
+  promoters: ["Synthetic Estates Pvt Ltd", "Coastal Developers Ltd"]
+  total_units: 200.0
+  declared_start: "2021-04-01"
+  declared_completion: "2024-03-31"
+  progress_pct: 0.6
+  quarter: "2025-Q1"
+  units_booked: 90.0
+
+projects:
+  # A Section 6.11-valid registry. The initial stage needs no human sign-off, but a
+  # human-signed history row is supplied anyway so the positive path is exercised.
+  n: 3
+  city: vizag
+  stage: announced
+  changed_by: analyst-0
+  changed_at: "2024-01-15"
