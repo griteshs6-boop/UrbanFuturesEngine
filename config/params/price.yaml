@@ -1,0 +1,86 @@
+# config/params/price.yaml
+# Spec Section 4.7, transcribed. `scope:` added per the Section 4.9 table:
+# "gamma (accessibility->price) -> global", "eta (demand price elasticity) -> global",
+# "Overshoot factor and half-life -> global", "Field caps -> global",
+# "Macro trend phi_t -> local". Leaves printed as bare scalars are encoded in the
+# Section 4.1 common form.
+#
+# NOTE: this file deliberately carries no file-level `_provenance`. Every `scope: global`
+# leaf states its own `fitted_on` or `citation`, as Section 4.1 requires.
+
+_schema_version: 1
+
+hedonic:
+  _provenance:
+    citation: "Accessibility capitalisation elasticities, hedonic literature (Section 13.0)"
+    fitted_on:
+      cities: [hyderabad, bengaluru, kochi, chennai, ahmedabad]
+      data_through: 2019
+  gamma_access_built: {value: 0.25, low: 0.15, high: 0.35, conf: R, scope: global}
+  gamma_land_multiple: {value: 1.85, low: 1.50, high: 2.20, conf: R, scope: global}
+  eta_demand_price:   {value: 0.65, low: 0.50, high: 0.80, conf: R, scope: global}
+
+macro:
+  # phi_t, applied city-wide, in log points per year
+  # scope: local — "Macro trend phi_t -> local" (Section 4.9); fitted from the city's
+  # 10-year price index (Section 20.2 step 14).
+  scenarios:
+    base: {value: 0.055, low: 0.03, high: 0.08, conf: R, scope: local}
+    bull: {value: 0.095, conf: G, scope: local}
+    bear: {value: 0.010, conf: G, scope: local}
+  scenario_probabilities:       # conf not tagged in spec
+    base: {value: 0.6, conf: G, scope: local}
+    bull: {value: 0.2, conf: G, scope: local}
+    bear: {value: 0.2, conf: G, scope: local}
+
+overshoot:
+  _provenance:
+    citation: "Speculative overshoot and decay, asset-price bubble literature"
+  peak_factor: {value: 0.55, low: 0.20, high: 1.50, conf: G, scope: global}
+  half_life_years: {value: 3.5, low: 2.5, high: 5.0, conf: G, scope: global}
+  # no overshoot below a 3% fundamental shock; conf not tagged in spec
+  trigger_min_shock: {value: 0.03, conf: G, scope: global}
+
+yields:
+  normal_gross_yield:
+    {value: 0.027, low: 0.020, high: 0.035, conf: E, scope: global,
+     citation: "Residential gross rental yields, Indian metro series"}
+  overheat_yield_threshold:
+    {value: 0.018, conf: R, scope: global,
+     citation: "Residential gross rental yields, Indian metro series"}
+
+price_data:
+  # Ask-to-transaction haircuts are a local market-state quantity.
+  ask_haircut_stable: {value: 0.10, low: 0.05, high: 0.15, conf: R, scope: local}
+  ask_haircut_soft:   {value: 0.20, low: 0.15, high: 0.25, conf: R, scope: local}
+  blend_weight_ask:   {value: 0.60, conf: G, scope: local}
+
+residual:
+  # residual above this percentile is flagged; conf not tagged in spec
+  overheat_percentile: {value: 80, conf: G, scope: global, citation: structural_assumption}
+  # Section 13.5 flag_physical thresholds.
+  physical_divergence_ratio:
+    {value: 1.8, conf: G, scope: global, citation: structural_assumption}
+  physical_min_price_cagr:
+    {value: 0.08, conf: G, scope: global, citation: structural_assumption}
+
+fields:
+  # Section 9.4: "The cap is a parameter in `price.yaml` (`field_cap_low`, `field_cap_high`)".
+  # Section 4.9: "Field caps -> global".
+  _provenance: {citation: structural_assumption}
+  cap_low:  {value: -0.45, conf: G, scope: global}
+  cap_high: {value: 0.60, conf: G, scope: global}
+  # "Log the number of cells that hit the cap; if more than 2% do, the parameters are wrong."
+  cap_warn_share: {value: 0.02, conf: G, scope: global}
+  # Section 9.3 field decay shapes: exponential is magnitude * exp(-k * d / max_m).
+  exponential_decay_k: {value: 3, conf: G, scope: global}
+  # Section 9.3 airport directional wedge: wedge = scale * (1 + cos theta).
+  airport_wedge_scale: {value: 0.5, conf: G, scope: global}
+
+decomposition:
+  # Section 13.4 factor decomposition controls.
+  _provenance: {citation: structural_assumption}
+  max_factors: {value: 20, conf: G, scope: global}
+  normalise_epsilon: {value: 1.0e-9, conf: G, scope: global}
+  interaction_warn_share_of_total: {value: 0.20, conf: G, scope: global}
+  interaction_warn_cell_share: {value: 0.05, conf: G, scope: global}
